@@ -1,0 +1,74 @@
+﻿@using B_B.DAL.Entity
+@model IEnumerable<Product>
+
+<h2>Products</h2>
+<a asp-action="Create" class="btn btn-primary">Add Product</a>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Price</th>
+            <th>Stock</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var p in Model)
+        {
+            <tr id="row-@p.Id">
+                <td>@p.Name</td>
+                @* <td>@p.Price</td>
+                <td>@p.QuantityInStock</td> *@
+                <td>
+                    <a asp-action="Edit" asp-route-id="@p.Id">Edit</a> |
+                    <a href="javascript:void(0)" class="text-danger delete-btn" data-id="@p.Id">Delete</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        $(document).ready(function () {
+            // Success message
+            var successMessage = '@TempData["Success"]';
+            if (successMessage) {
+                Swal.fire({
+                    icon: "success",
+                    title: "Success",
+                    text: successMessage,
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            }
+
+            // Delete confirmation
+            $(".delete-btn").click(function () {
+                var id = $(this).data("id");
+                Swal.fire({
+                    title: "Are you sure?",
+                    text: "This product will be deleted.",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonColor: "#d33",
+                    cancelButtonColor: "#3085d6",
+                    confirmButtonText: "Yes, delete it!"
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.post("@Url.Action("Delete", "Product")", { id: id }, function (data) {
+                            if (data.success) {
+                                $("#row-" + id).remove();
+                                Swal.fire("Deleted!", data.message, "success");
+                            } else {
+                                Swal.fire("Error!", data.message, "error");
+                            }
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+}

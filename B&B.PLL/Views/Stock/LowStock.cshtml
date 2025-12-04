@@ -1,0 +1,22 @@
+﻿@using B_B.DAL.Entity
+@model IEnumerable<Product>
+
+<h2>Low Stock Products</h2>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Product</th>
+            <th>Qty</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr class="table-danger">
+                <td>@item.Name</td>
+                @* <td>@item.QuantityInStock</td> *@
+            </tr>
+        }
+    </tbody>
+</table>

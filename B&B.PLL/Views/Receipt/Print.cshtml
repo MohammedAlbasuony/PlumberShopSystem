@@ -1,0 +1,496 @@
+﻿@model B_B.BLL.ViewModels.OutReceiptVM
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <title>إيصال الصرف - B&B</title>
+    <style>
+        /* Minimal styles for efficient printing */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Segoe UI Arabic', Tahoma, Geneva, Verdana, sans-serif;
+            direction: rtl;
+            text-align: right;
+            font-size: 12px;
+            line-height: 1.3;
+            background: white;
+            color: #000;
+            padding: 5mm;
+        }
+
+        /* Top Header - Wide and Clear */
+        .receipt-header {
+            border-bottom: 3px solid #000;
+            padding-bottom: 8px;
+            margin-bottom: 8px;
+            page-break-after: avoid;
+        }
+
+        .header-main {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .header-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #000;
+            margin: 0;
+        }
+
+        .header-info {
+            text-align: left;
+        }
+
+        .receipt-number {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        /* Header Info Grid - Single Row */
+        .header-details {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin: 10px 0;
+            padding: 8px 0;
+            border-top: 1px solid #ddd;
+            border-bottom: 1px solid #ddd;
+            page-break-after: avoid;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .detail-label {
+            font-weight: bold;
+            font-size: 11px;
+            color: #333;
+            margin-bottom: 2px;
+        }
+
+        .detail-value {
+            font-size: 12px;
+            color: #000;
+        }
+
+        /* Table Header - BOLD BLACK AND CLEAR */
+        .table-header-row {
+            background-color: #000 !important;
+            color: white !important;
+            font-weight: bold !important;
+            border: 2px solid #000 !important;
+        }
+
+        /* Compact Table for Receipt Rows */
+        .receipt-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 5px 0;
+            font-size: 11px;
+        }
+
+        .receipt-table th {
+            background-color: #000;
+            color: white;
+            border: 2px solid #000;
+            padding: 6px 8px;
+            font-weight: bold;
+            text-align: center;
+            page-break-inside: avoid;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .receipt-table td {
+            border: 1px solid #ddd;
+            padding: 3px 5px;
+            text-align: center;
+            vertical-align: top;
+        }
+
+        /* Make rows more compact for printing */
+        .receipt-table tr {
+            height: 22px;
+            page-break-inside: avoid;
+        }
+
+        /* Highlight header on screen */
+        @@media screen {
+            .receipt-table th {
+                background-color: #000;
+                color: #fff;
+                border-color: #000;
+            }
+        }
+
+        /* Totals Section - Compact */
+        .totals-section {
+            margin-top: 10px;
+            padding: 8px;
+            border: 1px solid #000;
+            background-color: #f9f9f9;
+            page-break-before: avoid;
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+            border-bottom: 1px dashed #ccc;
+        }
+
+        .total-row:last-child {
+            border-bottom: none;
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        /* Footer */
+        .receipt-footer {
+            margin-top: 15px;
+            padding-top: 8px;
+            border-top: 1px solid #000;
+            text-align: center;
+            font-size: 11px;
+            page-break-before: avoid;
+        }
+
+        /* Print Optimizations */
+        @@media print {
+            @@page {
+                size: A4;
+                margin: 5mm;
+            }
+
+            body {
+                padding: 0;
+                font-size: 10px;
+            }
+
+            /* BOLD BLACK HEADER FOR PRINTING */
+            .receipt-table th {
+                background-color: #000 !important;
+                color: white !important;
+                font-weight: bold !important;
+                border: 2px solid #000 !important;
+                -webkit-print-color-adjust: exact;
+                color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            /* Prevent page breaks inside important elements */
+            .receipt-header,
+            .header-details,
+            .receipt-table thead,
+            .totals-section,
+            .receipt-footer {
+                page-break-inside: avoid;
+            }
+
+            /* Allow page breaks between rows when printing large tables */
+            .receipt-table tbody tr {
+                page-break-inside: auto;
+            }
+
+            /* Ensure table headers repeat on each page */
+            .receipt-table thead {
+                display: table-header-group;
+            }
+
+            /* Force black background to print */
+            .receipt-table thead tr {
+                background-color: #000 !important;
+                -webkit-print-color-adjust: exact;
+                color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            /* Hide print button */
+            .print-button {
+                display: none;
+            }
+
+            /* Adjust table for printing */
+            .receipt-table {
+                font-size: 10px;
+            }
+
+            .receipt-table th {
+                padding: 4px 6px;
+                font-size: 11px;
+                font-weight: 900;
+            }
+
+            .receipt-table td {
+                padding: 2px 4px;
+            }
+        }
+
+        /* Screen-only styles */
+        @@media screen {
+            body {
+                background: #f5f5f5;
+                padding: 15px;
+            }
+
+            .print-button {
+                position: fixed;
+                top: 15px;
+                left: 15px;
+                background: #2563eb;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                z-index: 1000;
+                font-weight: bold;
+            }
+
+            .print-button:hover {
+                background: #1d4ed8;
+            }
+
+            .receipt-container {
+                max-width: 210mm;
+                margin: 0 auto;
+                background: white;
+                padding: 10mm;
+                box-shadow: 0 0 10px rgba(0,0,0,0.1);
+                border-radius: 5px;
+            }
+
+            /* Make table header stand out on screen */
+            .receipt-table thead {
+                position: sticky;
+                top: 0;
+                z-index: 10;
+            }
+
+            .receipt-table th {
+                position: relative;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            }
+        }
+
+        /* Status indicators */
+        .status-paid { color: #009900; }
+        .status-pending { color: #cc9900; }
+        .status-overdue { color: #cc0000; }
+        .text-danger { color: #cc0000; }
+        
+        /* Utility classes */
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .text-left { text-align: left; }
+        .bold { font-weight: bold; }
+        
+        /* Compact layout */
+        .compact-row {
+            margin-bottom: 2px;
+        }
+
+        /* Make header text more visible */
+        .header-cell {
+            font-weight: 900;
+            text-shadow: none;
+            font-family: 'Arial Black', 'Segoe UI Black', sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <button class="print-button" onclick="window.print()">
+        🖨️ طباعة الإيصال
+    </button>
+
+    <div class="receipt-container">
+        <!-- ========================= -->
+        <!-- 🟦 TOP HEADER - WIDE AND CLEAR -->
+        <!-- ========================= -->
+        <div class="receipt-header">
+            <div class="header-main">
+                <h1 class="header-title">فاتورة بيع - B&B</h1>
+                <div class="header-info">
+                    <div class="receipt-number">رقم: #@Model.Id.ToString("D6")</div>
+                    <div>التاريخ: @Model.Date.ToString("yyyy/MM/dd")</div>
+                </div>
+            </div>
+
+            <!-- Header Details in Single Row -->
+            <div class="header-details">
+                <div class="detail-item">
+                    <span class="detail-label">العميل:</span>
+                    <span class="detail-value">@(Model.Clients?.FirstOrDefault(c => c.Value == Model.ClientId.ToString())?.Text ?? "غير معروف")</span>
+                </div>
+                <div class="detail-item">
+                    @{
+                        var grossTotal = Model.ReceiptDetails.Sum(x => (x.Quantity - x.RefundQuantity) * x.UnitPrice);
+                    }
+                    <span class="detail-label">حالة الدفع:</span>
+                    <span class="detail-value @(Model.PaidAmount >= grossTotal ? "status-paid" : Model.PaidAmount > 0 ? "status-pending" : "status-overdue")">
+                        @(Model.PaidAmount >= grossTotal ? "مدفوع" : Model.PaidAmount > 0 ? "جزئي" : "غير مدفوع")
+                    </span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">عدد الأصناف:</span>
+                    <span class="detail-value">@Model.ReceiptDetails.Count</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">طابعة:</span>
+                    <span class="detail-value">@DateTime.Now.ToString("yyyy/MM/dd HH:mm")</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================= -->
+        <!-- 🟧 RECEIPT ROWS - COMPACT FOR PRINTING -->
+        <!-- ========================= -->
+        <table class="receipt-table">
+            <thead>
+                <tr class="table-header-row">
+                    <th width="25%" class="header-cell">المنتج</th>
+                    <th width="10%" class="header-cell">الكمية</th>
+                    <th width="10%" class="header-cell">المرتجع</th>
+                    <th width="12%" class="header-cell">سعر الوحدة</th>
+                    <th width="13%" class="header-cell">قيمة المرتجع</th>
+                    <th width="15%" class="header-cell">الإجمالي</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.ReceiptDetails)
+                {
+                    decimal qty = Convert.ToDecimal(item.Quantity);
+                    decimal refundQty = Convert.ToDecimal(item.RefundQuantity);
+                    decimal price = Convert.ToDecimal(item.UnitPrice);
+                    decimal refundAmount = price * refundQty;
+                    decimal totalAfterRefund = (qty - refundQty) * price;
+
+                    <tr class="compact-row">
+                        <td class="text-right">@item.ProductName</td>
+                        <td>@qty.ToString("N2")</td>
+                        <td>@refundQty.ToString("N2")</td>
+                        <td>@price.ToString("N2")</td>
+                        <td class="text-danger">@refundAmount.ToString("N2")</td>
+                        <td class="bold">@totalAfterRefund.ToString("N2")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <!-- ========================= -->
+        <!-- 🟩 TOTALS SECTION - COMPACT -->
+        <!-- ========================= -->
+        <div class="totals-section">
+            @{
+                decimal totalBeforeRefund = Model.ReceiptDetails.Sum(x => Convert.ToDecimal(x.Quantity) * Convert.ToDecimal(x.UnitPrice));
+                decimal totalRefund = Model.ReceiptDetails.Sum(x => Convert.ToDecimal(x.RefundQuantity) * Convert.ToDecimal(x.UnitPrice));
+                decimal netTotal = totalBeforeRefund - totalRefund;
+                decimal remainingAmount = netTotal - Convert.ToDecimal(Model.PaidAmount);
+            }
+
+            <div class="total-row">
+                <span>الإجمالي قبل المرتجع:</span>
+                <span class="bold">@totalBeforeRefund.ToString("N2") ج.م</span>
+            </div>
+            <div class="total-row">
+                <span class="text-danger">إجمالي المرتجع:</span>
+                <span class="text-danger bold">@totalRefund.ToString("N2") ج.م</span>
+            </div>
+            <div class="total-row">
+                <span>الإجمالي بعد المرتجع:</span>
+                <span class="bold">@netTotal.ToString("N2") ج.م</span>
+            </div>
+            <div class="total-row">
+                <span>المبلغ المدفوع:</span>
+                <span class="bold">@Convert.ToDecimal(Model.PaidAmount).ToString("N2") ج.م</span>
+            </div>
+            <div class="total-row">
+                <span>المبلغ المتبقي:</span>
+                <span class="@(remainingAmount > 0 ? "status-overdue bold" : "status-paid bold")">
+                    @remainingAmount.ToString("N2") ج.م
+                </span>
+            </div>
+        </div>
+
+        <!-- ========================= -->
+        <!-- 🟪 FOOTER -->
+        <!-- ========================= -->
+        <div class="receipt-footer">
+            <div class="bold">شكراً لتعاملكم مع B&B</div>
+            <div>هاتف: 01552451717 | التاريخ: @DateTime.Now.ToString("yyyy/MM/dd HH:mm")</div>
+        </div>
+    </div>
+
+    <script>
+        // Print optimization
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add a CSS class to ensure black background prints
+            const style = document.createElement('style');
+            style.textContent = `
+                @@media print {
+                    .receipt-table th {
+                        background-color: #000000 !important;
+                        -webkit-print-color-adjust: exact !important;
+                        color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        });
+
+        // Auto-print if needed (uncomment if you want auto-print)
+        // window.print();
+        
+        // Add keyboard shortcut for printing
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+                e.preventDefault();
+                window.print();
+            }
+        });
+
+        // Function to calculate page breaks for large tables
+        function optimizeForPrinting() {
+            const table = document.querySelector('.receipt-table');
+            const rows = table.querySelectorAll('tbody tr');
+            const maxRowsPerPage = 45; // Adjust based on your paper size
+            
+            rows.forEach((row, index) => {
+                if (index > 0 && index % maxRowsPerPage === 0) {
+                    // Add a page break before this row
+                    row.style.pageBreakBefore = 'always';
+                }
+            });
+        }
+
+        // Call optimization before printing
+        window.addEventListener('beforeprint', optimizeForPrinting);
+        
+        // Ensure black header prints correctly
+        window.addEventListener('beforeprint', function() {
+            // Force black background for headers
+            const headers = document.querySelectorAll('.receipt-table th');
+            headers.forEach(header => {
+                header.style.backgroundColor = '#000000';
+                header.style.color = '#FFFFFF';
+                header.style.fontWeight = '900';
+                header.style.border = '2px solid #000000';
+            });
+        });
+    </script>
+</body>
+</html>

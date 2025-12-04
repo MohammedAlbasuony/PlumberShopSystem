@@ -1,0 +1,412 @@
+﻿@using B_B.BLL.ViewModels
+@model ReceiptVM
+
+<div class="page-content active">
+    <div class="page-header">
+        <h1 class="page-title">إنشاء إيصال دخول</h1>
+        <a asp-action="InReceipts" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> رجوع
+        </a>
+    </div>
+
+    <div class="content-section">
+        <div asp-validation-summary="All" class="text-danger"></div>
+
+        <form asp-action="CreateInReceipt" method="post">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">اختر مورد موجود</label>
+                    <select asp-for="SupplierId" asp-items="Model.Suppliers" class="form-input">
+                        <option value="">-- مورد جديد --</option>
+                    </select>
+                    <span asp-validation-for="SupplierId" class="text-danger"></span>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">اسم مورد الجديد</label>
+                    <input asp-for="NewSupplierName" class="form-input" placeholder="ادخل الاسم إذا كان المورد جديد" />
+                    <span asp-validation-for="NewSupplierName" class="text-danger"></span>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">هاتف العميل الجديد</label>
+                    <input asp-for="NewSupplierPhone" class="form-input" placeholder="رقم الهاتف اختياري" />
+                    <span asp-validation-for="NewSupplierPhone" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="search-bar">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="searchBox" class="search-input" placeholder="ابحث عن المنتجات..." />
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table class="table" id="productTable">
+                    <thead>
+                        <tr>
+                            <th>الاسم</th>
+                            <th>سعر التكلفه</th>
+                            <th>المخزون</th>
+                            <th>الإجراء</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <nav>
+                <ul class="pagination" id="pagination"></ul>
+            </nav>
+            <div class="pagination-info" id="paginationInfo"></div>
+
+            <h4 class="mt-4 section-title">تفاصيل الإيصال</h4>
+            <div class="table-container">
+                <table class="table" id="receiptDetailsTable">
+                    <thead>
+                        <tr>
+                            <th>المنتج</th>
+                            <th>الكمية</th>
+                            <th>سعر الوحدة</th>
+                            <th>الإجمالي</th>
+                            <th>الإجراء</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div class="form-grid mt-3">
+                <div class="form-group">
+                    <label class="form-label"><strong>الإجمالي الكلي:</strong></label>
+                    <div class="form-control-static" id="grandTotal">0.00</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">المبلغ المدفوع</label>
+                    <input type="number" asp-for="PaidAmount" id="PaidAmount" class="form-input" value="0" min="0" step="0.01" />
+                    <span asp-validation-for="PaidAmount" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label"><strong>المتبقي (الدائن):</strong></label>
+                    <div class="form-control-static" id="remainingAmount">0.00</div>
+                </div>
+            </div>
+
+            <div class="action-buttons mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> حفظ الإيصال
+                </button>
+                <a asp-action="InReceipts" class="btn btn-secondary">
+                    إلغاء
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+
+    <script>
+        var products = @Html.Raw(ViewBag.ProductsJson);
+        var savedDetails = @Html.Raw(ViewBag.InReceiptDraftJson ?? "[]");
+
+        let pageSize = 20, currentPage = 1, detailIndex = 0, maxVisiblePages = 5;
+
+        function renderProducts() {
+            let search = $("#searchBox").val()?.toLowerCase() || "";
+            let filtered = products.filter(p => (p.name || "").toLowerCase().includes(search));
+            let totalItems = filtered.length;
+            let totalPages = Math.ceil(totalItems / pageSize);
+            let start = (currentPage - 1) * pageSize;
+            let paged = filtered.slice(start, start + pageSize);
+
+            let rows = paged.map(p => `
+                <tr>
+                    <td>${p.name}</td>
+                    <td>${p.price.toFixed(2)}</td>
+                    <td>${p.stock}</td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-success addProductBtn"
+                            data-id="${p.id}"
+                            data-name="${p.name}"
+                            data-price="${p.price}">
+                            <i class="fas fa-plus"></i> إضافة
+                        </button>
+                    </td>
+                </tr>
+            `).join("");
+
+            $("#productTable tbody").html(rows);
+            renderPagination(totalPages, totalItems);
+        }
+
+        function renderPagination(totalPages, totalItems) {
+            if(totalPages <= 1){
+                $("#pagination").html("");
+                $("#paginationInfo").text(`عرض 1-${totalItems} من ${totalItems} منتج`);
+                return;
+            }
+
+            const startItem = (currentPage - 1) * pageSize + 1;
+            const endItem = Math.min(currentPage * pageSize, totalItems);
+            $("#paginationInfo").text(`عرض ${startItem}-${endItem} من ${totalItems} منتج`);
+
+            let html = `<li class="page-item ${currentPage===1?'disabled':''}"><a class="page-link" href="#" data-page="prev">&lt;</a></li>`;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages/2));
+            let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+            if(endPage - startPage < maxVisiblePages - 1) startPage = Math.max(1, endPage - maxVisiblePages + 1);
+
+            for(let i=startPage;i<=endPage;i++){
+                html += `<li class="page-item ${i===currentPage?'active':''}"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
+            }
+            html += `<li class="page-item ${currentPage===totalPages?'disabled':''}"><a class="page-link" href="#" data-page="next">&gt;</a></li>`;
+            $("#pagination").html(html);
+        }
+
+        $(document).on("click","#pagination a",function(e){
+            e.preventDefault();
+            const action = $(this).data("page");
+            const filtered = products.filter(p => (p.name||"").toLowerCase().includes($("#searchBox").val().toLowerCase()));
+            const totalPages = Math.ceil(filtered.length/pageSize);
+            if(action==="prev" && currentPage>1) currentPage--;
+            else if(action==="next" && currentPage<totalPages) currentPage++;
+            else if(!isNaN(action)) currentPage=parseInt(action);
+            renderProducts();
+        });
+
+        $("#searchBox").on("input",()=>{ currentPage=1; renderProducts(); });
+
+        $(document).on("click",".addProductBtn",function(){
+            let id = $(this).data("id"), name=$(this).data("name"), price=$(this).data("price");
+            let existing = $(`#receiptDetailsTable tbody tr[data-id='${id}']`);
+            if(existing.length>0){
+                let qtyInput = existing.find(".qty");
+                qtyInput.val((parseFloat(qtyInput.val()||0)+1)).trigger("input");
+            } else {
+                addProductRow(id,name,1,price);
+            }
+            saveDraft();
+        });
+
+        function addProductRow(id,name,qty,price){
+            let row = `<tr data-id="${id}">
+                <td><input type="hidden" name="ReceiptDetails[${detailIndex}].ProductId" value="${id}">${name}</td>
+                <td><input type="number" name="ReceiptDetails[${detailIndex}].Quantity" value="${qty}" class="form-input qty" min="0" step="any"></td>
+                <td><input type="number" name="ReceiptDetails[${detailIndex}].UnitPrice" value="${price}" class="form-input unitPrice" min="0" step="0.01"></td>
+                <td class="rowTotal">0.00</td>
+                <td><button type="button" class="btn btn-danger btn-sm removeRow"><i class="fas fa-times"></i></button></td>
+            </tr>`;
+            $("#receiptDetailsTable tbody").append(row);
+            detailIndex++;
+            updateGrandTotal();
+        }
+
+        $(document).on("click",".removeRow",function(){ $(this).closest("tr").remove(); reindexDetails(); updateGrandTotal(); saveDraft(); });
+
+        function reindexDetails(){
+            $("#receiptDetailsTable tbody tr").each(function(i){ $(this).find("input").each(function(){ let name=$(this).attr("name"); if(name){ $(this).attr("name",name.replace(/\[\d+\]/,`[${i}]`)); } }); });
+            detailIndex = $("#receiptDetailsTable tbody tr").length;
+        }
+
+        $(document).on("input",".qty, .unitPrice, #PaidAmount",function(){ updateGrandTotal(); saveDraft(); });
+
+        function recalcRow(row){
+            let qty=parseFloat(row.find(".qty").val())||0, price=parseFloat(row.find(".unitPrice").val())||0;
+            let total = qty*price;
+            row.find(".rowTotal").text(total.toFixed(2));
+        }
+
+        function updateGrandTotal(){
+            let total=0;
+            $("#receiptDetailsTable tbody tr").each(function(){ recalcRow($(this)); total+=parseFloat($(this).find(".rowTotal").text())||0; });
+            $("#grandTotal").text(total.toFixed(2));
+            let paid=parseFloat($("#PaidAmount").val())||0;
+            $("#remainingAmount").text((total-paid).toFixed(2));
+        }
+
+        function saveDraft(){
+            let details = [];
+            $("#receiptDetailsTable tbody tr").each(function(){
+                 details.push({
+                    ProductId: $(this).data("id"),   // ✅ matches ReceiptDetailVM.ProductId
+                    Quantity: parseFloat($(this).find(".qty").val()) || 0,
+                    UnitPrice: parseFloat($(this).find(".unitPrice").val()) || 0
+                 });
+
+            });
+            let vm = { PaidAmount: $("#PaidAmount").val(), ReceiptDetails: details };
+            $.ajax({ url: "/Receipt/SaveInReceiptDraft", method:"POST", contentType:"application/json", data: JSON.stringify(vm) });
+        }
+
+        function addRowFromModel(item){
+            addProductRow(item.productId,item.productName,item.quantity,item.unitPrice);
+        }
+
+        $(function(){
+            renderProducts();
+            if(Array.isArray(savedDetails) && savedDetails.length>0){ savedDetails.forEach(addRowFromModel); detailIndex=savedDetails.length; updateGrandTotal(); }
+        });
+
+        window.addEventListener("beforeunload", saveDraft);
+    </script>
+}
+
+
+<style>
+    /* Pagination Styles */
+    .pagination {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 1rem;
+        justify-content: center;
+        list-style: none;
+        padding: 0;
+        flex-wrap: wrap;
+    }
+
+    .page-item {
+        display: inline-block;
+    }
+
+    .page-link {
+        padding: 0.5rem 0.75rem;
+        border-radius: 6px;
+        border: 1px solid var(--gray-300);
+        color: var(--gray-700);
+        text-decoration: none;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 40px;
+    }
+
+        .page-link:hover {
+            background-color: var(--gray-100);
+            border-color: var(--gray-400);
+        }
+
+    .page-item.active .page-link {
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        color: white;
+        border-color: var(--primary);
+    }
+
+    .page-item.disabled .page-link {
+        opacity: 0.5;
+        cursor: not-allowed;
+        background-color: var(--gray-100);
+    }
+
+        .page-item.disabled .page-link:hover {
+            background-color: var(--gray-100);
+            border-color: var(--gray-300);
+        }
+
+    .pagination-info {
+        text-align: center;
+        margin-top: 0.5rem;
+        color: var(--gray-600);
+        font-size: 0.875rem;
+    }
+
+    /* Table Styles */
+    .table-container {
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0;
+    }
+
+        .table th {
+            background-color: var(--gray-50);
+            padding: 1rem;
+            font-weight: 600;
+            text-align: right;
+            border-bottom: 2px solid var(--gray-300);
+        }
+
+        .table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .table tr:hover td {
+            background-color: var(--gray-50);
+        }
+
+    
+    /* Form Styles */
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .form-label {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: var(--gray-700);
+    }
+
+    .form-input {
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--gray-300);
+        border-radius: 6px;
+        transition: border-color 0.2s ease;
+    }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+    .form-control-static {
+        padding: 0.5rem 0;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    
+
+    /* Responsive */
+    @@media (max-width: 768px) {
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+        }
+
+        .btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .pagination {
+            gap: 0.25rem;
+        }
+
+        .page-link {
+            padding: 0.375rem 0.5rem;
+            min-width: 36px;
+            font-size: 0.875rem;
+        }
+    }
+</style>

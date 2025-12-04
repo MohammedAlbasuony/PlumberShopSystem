@@ -1,0 +1,375 @@
+﻿@using B_B.BLL.ViewModels
+@model EditReceiptVM
+
+<div class="page-content active">
+    <div class="page-header">
+        <h1 class="page-title">تعديل الإيصال (@Model.ReceiptType)</h1>
+        <a asp-action="@(Model.ReceiptType == B_B.DAL.Entity.ReceiptType.In ? "InReceipts" : "OutReceipts")" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> رجوع
+        </a>
+    </div>
+
+    <div class="content-section">
+        <form asp-action="Edit" method="post">
+            <input type="hidden" asp-for="Id" />
+            <input type="hidden" asp-for="ReceiptType" />
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">التاريخ</label>
+                    <input asp-for="Date" type="date" class="form-input" />
+                    <span asp-validation-for="Date" class="text-danger"></span>
+                </div>
+
+                @if (Model.ReceiptType == B_B.DAL.Entity.ReceiptType.In)
+                {
+                    <div class="form-group">
+                        <label class="form-label">المورد</label>
+                        <select asp-for="SupplierId" asp-items="Model.Suppliers" class="form-input"></select>
+                        <span asp-validation-for="SupplierId" class="text-danger"></span>
+                    </div>
+                }
+                else
+                {
+                    <div class="form-group">
+                        <label class="form-label">العميل</label>
+                        <select asp-for="ClientId" asp-items="Model.Clients" class="form-input"></select>
+                        <span asp-validation-for="ClientId" class="text-danger"></span>
+                    </div>
+                }
+            </div>
+
+            <!-- Product search -->
+            <div class="form-group">
+                <div class="search-bar">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="searchBox" class="search-input" placeholder="ابحث عن المنتجات..." />
+                </div>
+            </div>
+
+            <!-- Products table -->
+            <div class="table-container">
+                <table class="table" id="productTable">
+                    <thead>
+                        <tr>
+                            <th>الاسم</th>
+                            <th>التكلفة</th>
+                            <th>سعر البيع</th>
+                            <th>المخزون</th>
+                            <th>الإجراء</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <nav>
+                <ul class="pagination" id="pagination"></ul>
+            </nav>
+            <div class="pagination-info" id="paginationInfo"></div>
+
+            <!-- Receipt details -->
+            <h4 class="mt-4 section-title">تفاصيل الإيصال</h4>
+            <div class="table-container">
+                <table class="table" id="receiptDetailsTable">
+                    <thead>
+                        <tr>
+                            <th>المنتج</th>
+                            <th>الكمية</th>
+                            <th>التكلفة</th>
+                            <th>سعر الوحدة</th>
+                            <th>نسبة الخصم (%)</th>
+                            <th>المرتجع</th>
+                            <th>الإجمالي بعد الخصم</th>
+                            <th>الإجراء</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- 🔥 UPDATED: Will be populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Totals -->
+            <div class="form-grid mt-3">
+                <div class="form-group">
+                    <label class="form-label"><strong>الإجمالي الكلي:</strong></label>
+                    <div class="form-control-static" id="grandTotal">0.00</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label"><strong>إجمالي التكلفة:</strong></label>
+                    <div class="form-control-static" id="costTotal">0.00</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">المبلغ المدفوع</label>
+                    <input type="number" asp-for="PaidAmount" id="PaidAmount" class="form-input" min="0" step="0.01" />
+                    <span asp-validation-for="PaidAmount" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label"><strong>المتبقي:</strong></label>
+                    <div class="form-control-static" id="remainingAmount">0.00</div>
+                </div>
+            </div>
+
+            <div class="action-buttons mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> حفظ التغييرات
+                </button>
+                <a asp-action="@(Model.ReceiptType == B_B.DAL.Entity.ReceiptType.In ? "InReceipts" : "OutReceipts")" class="btn btn-secondary">
+                    إلغاء
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@{
+    // Safe JSON strings for JS
+    var productsJson = ViewBag.ProductsJson as string ?? "[]";
+    var details = Model?.ReceiptDetails ?? new List<ReceiptDetailVM>();
+
+    // 🔥 ENHANCED: Serialize with all necessary properties
+    var detailsJson = System.Text.Json.JsonSerializer.Serialize(
+        details.Select(d => new
+        {
+            ProductId = d.ProductId,
+            ProductName = d.ProductName,
+            Quantity = d.Quantity,
+            UnitPrice = d.UnitPrice,
+            Cost = d.Cost,
+            DiscountPercentage = d.DiscountPercentage,
+            RefundQuantity = d.RefundQuantity
+        }),
+        new System.Text.Json.JsonSerializerOptions
+        {
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        }
+    );
+}
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+
+    <script>
+        var products = @Html.Raw(productsJson);
+        var savedDetails = @Html.Raw(detailsJson);
+
+        let pageSize = 20, currentPage = 1, detailIndex = 0, maxVisiblePages = 5;
+
+        // ---------- Product rendering ----------
+        function renderProducts() {
+            let search = $("#searchBox").val()?.toLowerCase() || "";
+            let filtered = products.filter(p => (p.name || "").toLowerCase().includes(search));
+            let totalItems = filtered.length;
+            let totalPages = Math.ceil(totalItems / pageSize);
+            let start = (currentPage - 1) * pageSize;
+            let paged = filtered.slice(start, start + pageSize);
+
+            let rows = paged.map(p => `
+                <tr>
+                    <td>${escapeHtml(p.name)}</td>
+                    <td>${p.cost ?? 0}</td>
+                    <td>${p.price ?? 0}</td>
+                    <td>${p.stock ?? 0}</td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-success addProductBtn"
+                            data-id="${p.id}"
+                            data-name="${escapeHtml(p.name)}"
+                            data-price="${p.price ?? 0}"
+                            data-cost="${p.cost ?? 0}">
+                            <i class="fas fa-plus"></i> إضافة
+                        </button>
+                    </td>
+                </tr>`).join("");
+
+            $("#productTable tbody").html(rows);
+            renderPagination(totalPages, totalItems);
+        }
+
+        function renderPagination(totalPages, totalItems) {
+            if(totalPages <= 1){
+                $("#pagination").html("");
+                $("#paginationInfo").text(`عرض 1-${totalItems} من ${totalItems} منتج`);
+                return;
+            }
+
+            const startItem = (currentPage - 1) * pageSize + 1;
+            const endItem = Math.min(currentPage * pageSize, totalItems);
+            $("#paginationInfo").text(`عرض ${startItem}-${endItem} من ${totalItems} منتج`);
+
+            let html = `<li class="page-item ${currentPage===1?'disabled':''}"><a class="page-link" href="#" data-page="prev">&lt;</a></li>`;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages/2));
+            let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+            if(endPage - startPage < maxVisiblePages - 1) {
+                startPage = Math.max(1, endPage - maxVisiblePages + 1);
+            }
+
+            for(let i = startPage; i <= endPage; i++){
+                html += `<li class="page-item ${i===currentPage?'active':''}"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
+            }
+            html += `<li class="page-item ${currentPage===totalPages?'disabled':''}"><a class="page-link" href="#" data-page="next">&gt;</a></li>`;
+            $("#pagination").html(html);
+        }
+
+        $(document).on("click", "#pagination a", function(e){
+            e.preventDefault();
+            const action = $(this).data("page");
+            const filtered = products.filter(p => (p.name||"").toLowerCase().includes($("#searchBox").val().toLowerCase()));
+            const totalPages = Math.ceil(filtered.length / pageSize);
+
+            if(action === "prev" && currentPage > 1) currentPage--;
+            else if(action === "next" && currentPage < totalPages) currentPage++;
+            else if(!isNaN(action)) currentPage = parseInt(action);
+
+            renderProducts();
+        });
+
+        $("#searchBox").on("input", () => {
+            currentPage = 1;
+            renderProducts();
+        });
+
+        // ---------- Add / manage receipt rows ----------
+        $(document).on("click", ".addProductBtn", function(){
+            let productId = $(this).data("id"),
+                productName = $(this).data("name"),
+                price = $(this).data("price") ?? 0,
+                cost = $(this).data("cost") ?? 0;
+
+            let existingRow = $(`#receiptDetailsTable tbody tr[data-id='${productId}']`);
+            if(existingRow.length > 0){
+                let qtyInput = existingRow.find(".qty");
+                qtyInput.val((parseFloat(qtyInput.val() || 0) + 1)).trigger("input");
+            } else {
+                addProductRow(productId, productName, 1, price, cost, 0, 0);
+            }
+        });
+
+        function addProductRow(id, name, qty, price, cost, discount, refund){
+            const safeName = escapeHtml(name);
+            let row = `
+            <tr data-id="${id}" data-cost="${cost}">
+                <td>
+                    <input type="hidden" name="ReceiptDetails[${detailIndex}].ProductId" value="${id}" />
+                    ${safeName}
+                </td>
+                <td>
+                    <input type="number" name="ReceiptDetails[${detailIndex}].Quantity"
+                           value="${qty}" class="form-input qty" min="0" step="0.001" />
+                </td>
+                <td class="rowCost">${cost}</td>
+                <td>
+                    <input type="number" name="ReceiptDetails[${detailIndex}].UnitPrice"
+                           value="${price}" class="form-input unitPrice" min="0" step="0.01" />
+                </td>
+                <td>
+                    <input type="number" name="ReceiptDetails[${detailIndex}].DiscountPercentage"
+                           value="${discount}" class="form-input discount" min="0" max="100" step="0.01" />
+                </td>
+                <td>
+                    <input type="number" name="ReceiptDetails[${detailIndex}].RefundQuantity"
+                           value="${refund}" class="form-input refund" min="0" step="0.001" />
+                </td>
+                <td class="rowTotal">0.00</td>
+                <td>
+                    <button type="button" class="btn btn-danger btn-sm removeRow">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </td>
+            </tr>`;
+            $("#receiptDetailsTable tbody").append(row);
+            detailIndex++;
+            updateGrandTotal();
+        }
+
+        // 🔥🔥 FIXED: Reindex after removal
+        function reindexDetails() {
+            $("#receiptDetailsTable tbody tr").each(function(i) {
+                $(this).find("input, select").each(function () {
+                    let name = $(this).attr("name");
+                    if (name) {
+                        name = name.replace(/\[\d+\]/, `[${i}]`);
+                        $(this).attr("name", name);
+                    }
+                });
+            });
+
+            detailIndex = $("#receiptDetailsTable tbody tr").length;
+        }
+
+        // 🔥🔥 FIXED: Reindex on delete
+        $(document).on("click", ".removeRow", function(){
+            $(this).closest("tr").remove();
+            reindexDetails();  // <-- FIX
+            updateGrandTotal();
+        });
+
+        $(document).on("input", ".qty, .unitPrice, .discount, .refund, #PaidAmount", function(){
+            updateGrandTotal();
+        });
+
+        // ---------- Totals ----------
+        function updateGrandTotal(){
+            let total = 0, costTotal = 0;
+            $("#receiptDetailsTable tbody tr").each(function(){
+                let qty = parseFloat($(this).find(".qty").val()) || 0,
+                    price = parseFloat($(this).find(".unitPrice").val()) || 0,
+                    cost = parseFloat($(this).data("cost")) || 0,
+                    discount = parseFloat($(this).find(".discount").val()) || 0,
+                    refund = parseFloat($(this).find(".refund").val()) || 0;
+
+                let discountedTotal = (qty - refund) * price * (1 - discount / 100);
+                $(this).find(".rowTotal").text(discountedTotal.toFixed(2));
+                total += discountedTotal;
+                costTotal += (qty - refund) * cost;
+            });
+
+            $("#grandTotal").text(total.toFixed(2));
+            $("#costTotal").text(costTotal.toFixed(2));
+
+            let paid = parseFloat($("#PaidAmount").val()) || 0;
+            $("#remainingAmount").text((total - paid).toFixed(2));
+        }
+
+        // ---------- Restore saved details ----------
+        function addRowFromModel(item){
+            let productId = item.productId ?? item.ProductId ?? 0;
+            let product = products.find(p => p.id == productId);
+
+            let productName = item.productName ?? item.ProductName;
+            let cost = item.cost ?? item.Cost;
+
+            if (!productName && product) productName = product.name;
+            if ((cost === undefined || cost === null) && product) cost = product.cost ?? 0;
+
+            productName = productName || "اسم غير معروف";
+            cost = cost ?? 0;
+
+            let quantity = item.quantity ?? item.Quantity ?? 1;
+            let unitPrice = item.unitPrice ?? item.UnitPrice ?? (product?.price ?? 0);
+            let discount = item.discountPercentage ?? item.DiscountPercentage ?? 0;
+            let refund = item.refundQuantity ?? item.RefundQuantity ?? 0;
+
+            addProductRow(productId, productName, quantity, unitPrice, cost, discount, refund);
+        }
+
+        function escapeHtml(text){
+            return text == null ? "" : text.toString()
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        $(function(){
+            renderProducts();
+            if(Array.isArray(savedDetails) && savedDetails.length > 0){
+                savedDetails.forEach(addRowFromModel);
+                detailIndex = savedDetails.length;
+                updateGrandTotal();
+            }
+        });
+    </script>
+}

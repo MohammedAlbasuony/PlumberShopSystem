@@ -1,0 +1,89 @@
+﻿@model B_B.DAL.Entity.Product
+
+<div class="page-content active">
+    <div class="page-header">
+        <h1 class="page-title">تعديل المنتج</h1>
+        <a asp-action="Index" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> الرجوع إلى المخزون
+        </a>
+    </div>
+
+    <div class="content-section">
+        <form asp-action="Edit" method="post">
+            <input type="hidden" asp-for="Id" />
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label asp-for="Name" class="form-label">اسم المنتج</label>
+                    <input asp-for="Name" class="form-input" />
+                    <span asp-validation-for="Name" class="text-danger"></span>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="SupplierId" class="form-label">المورد</label>
+                    <select asp-for="SupplierId" asp-items="ViewBag.Suppliers" class="form-input">
+                        <option value="">-- اختر المورد --</option>
+                    </select>
+
+                    <span asp-validation-for="SupplierId" class="text-danger"></span>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="InitialStock" class="form-label">المخزون الابتدائي</label>
+                    <input asp-for="InitialStock" class="form-input" type="number" min="0" step="0.01" />
+                    <span asp-validation-for="InitialStock" class="text-danger"></span>
+                </div>
+
+
+                <div class="form-group">
+                    <label asp-for="Cost" class="form-label">التكلفة</label>
+                    <input asp-for="Cost" class="form-input" />
+                    <span asp-validation-for="Cost" class="text-danger"></span>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="SellingPrice" class="form-label">سعر البيع</label>
+                    <input asp-for="SellingPrice" class="form-input" />
+                    <span asp-validation-for="SellingPrice" class="text-danger"></span>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="Purchases" class="form-label">المشتريات</label>
+                    <input asp-for="Purchases" class="form-input" />
+                    <span asp-validation-for="Purchases" class="text-danger"></span>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="Sold" class="form-label">المبيعات</label>
+                    <input asp-for="Sold" class="form-input" />
+                    <span asp-validation-for="Sold" class="text-danger"></span>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="Refunds" class="form-label">المرتجعات</label>
+                    <input asp-for="Refunds" class="form-input" />
+                    <span asp-validation-for="Refunds" class="text-danger"></span>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">المخزون الحالي</label>
+                    <input value="@Model.Quantity" class="form-input" disabled />
+                    <small class="text-muted">= المشتريات + المرتجعات – المبيعات</small>
+                </div>
+            </div>
+
+            <div class="action-buttons mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> حفظ التغييرات
+                </button>
+                <a asp-action="Index" class="btn btn-secondary">
+                    إلغاء
+                </a>
+            </div>
+        </form>
+    </div>
+
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

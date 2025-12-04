@@ -1,0 +1,37 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36301.6 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "B&B.PLL", "B&B.PLL\B&B.PLL.csproj", "{69FCFECC-BFB6-4775-82BB-033614D87538}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "B&B.DAL", "B&B.DAL\B&B.DAL.csproj", "{DD56382D-FF47-4A7E-9129-EA07C4929CC1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "B&B.BLL", "B&B.BLL\B&B.BLL.csproj", "{74341F11-B48A-4CF5-93AD-9CEA672662AB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{69FCFECC-BFB6-4775-82BB-033614D87538}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{69FCFECC-BFB6-4775-82BB-033614D87538}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{69FCFECC-BFB6-4775-82BB-033614D87538}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{69FCFECC-BFB6-4775-82BB-033614D87538}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DD56382D-FF47-4A7E-9129-EA07C4929CC1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DD56382D-FF47-4A7E-9129-EA07C4929CC1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DD56382D-FF47-4A7E-9129-EA07C4929CC1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DD56382D-FF47-4A7E-9129-EA07C4929CC1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{74341F11-B48A-4CF5-93AD-9CEA672662AB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{74341F11-B48A-4CF5-93AD-9CEA672662AB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{74341F11-B48A-4CF5-93AD-9CEA672662AB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{74341F11-B48A-4CF5-93AD-9CEA672662AB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {FBE43583-6E26-4A14-8709-5CEE3F994DE3}
+	EndGlobalSection
+EndGlobal

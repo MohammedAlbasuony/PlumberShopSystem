@@ -1,0 +1,444 @@
+﻿@model IEnumerable<B_B.BLL.ViewModels.PlumberListVM>
+
+<div class="page-content active">
+    <div class="content-section">
+        <div class="table-controls">
+            <div class="search-bar">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" class="search-input" placeholder="ابحث عن سباكين..." />
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table class="table" id="plumbersTable">
+                <thead>
+                    <tr>
+                        <th>الاسم</th>
+                        <th>الهاتف</th>
+                        <th>الإيصالات</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    @foreach (var plumber in Model)
+                    {
+                        // Calculate total amounts for all receipts of this plumber
+                        var totalAmount = plumber.Receipts.Sum(r => r.TotalAmount);
+                        var totalPaid = plumber.Receipts.Sum(r => r.PaidAmount);
+                        var totalRemaining = totalAmount - totalPaid;
+
+                        var totalRemainingClass = totalRemaining < 0 ? "text-warning" :
+                        (totalRemaining > 0 ? "text-danger" : "text-success");
+
+                        <tr id="row-@plumber.Id" data-plumbername="@plumber.Name.ToLower()">
+                            <td class="plumber-name">@plumber.Name</td>
+                            <td>@plumber.Phone</td>
+                            <td>
+                                @if (plumber.Receipts.Any())
+                                {
+                                   
+
+                                    <div class="table-container">
+                                        <table class="table table-bordered">
+                                            <thead>
+                                                <tr>
+                                                    <th>رقم الإيصال</th>
+                                                    <th>التاريخ</th>
+                                                    <th>العميل</th>
+                                                    <th>الإجمالي</th>
+                                                    <th>المدفوع</th>
+                                                    <th>المتبقي</th>
+                                                    @* <th>الحالة</th> *@
+                                                    <th>الإجراءات</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var r in plumber.Receipts)
+                                                {
+                                                    var remainingAmount = r.TotalAmount - r.PaidAmount;
+                                                    var isOwedToPlumber = remainingAmount < 0;
+                                                    var isPlumberOwes = remainingAmount > 0;
+                                                    var isSettled = remainingAmount == 0;
+
+                                                    var remainingAmountClass = isOwedToPlumber ? "text-warning" :
+                                                    (isPlumberOwes ? "text-danger" : "text-success");
+                                                    var statusText = isOwedToPlumber ? "نحن مدينون للسباك" :
+                                                    (isPlumberOwes ? "السباك مدين لنا" : "تم التسوية");
+                                                    var statusIcon = isOwedToPlumber ? "fa-arrow-down" :
+                                                    (isPlumberOwes ? "fa-arrow-up" : "fa-check");
+                                                    var statusBg = isOwedToPlumber ? "bg-warning-light" :
+                                                    (isPlumberOwes ? "bg-danger-light" : "bg-success-light");
+
+                                                    <tr>
+                                                        <td>@r.ReceiptId</td>
+                                                        <td>@r.Date.ToString("yyyy/MM/dd")</td>
+                                                        <td>@r.ClientName</td>
+                                                        <td>@r.TotalAmount.ToString("N2")</td>
+                                                        <td>
+                                                            @if (r.PaidAmount != 0)
+                                                            {
+                                                                <span class="@(r.PaidAmount > 0 ? "text-success" : "text-danger")">
+                                                                    @r.PaidAmount.ToString("N2")
+                                                                </span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="text-muted">-</span>
+                                                            }
+                                                        </td>
+                                                        <td>
+                                                            <span class="@remainingAmountClass">
+                                                                @Math.Abs(remainingAmount).ToString("N2")
+                                                            </span>
+                                                        </td>
+                                                        @* <td>
+                                                            <span class="status-badge @statusBg">
+                                                                <i class="fas @statusIcon"></i>
+                                                                @statusText
+                                                            </span>
+                                                        </td> *@
+                                                        <td class="action-cell">
+                                                           
+
+                                                            <a asp-controller="Receipt" asp-action="Review" asp-route-id="@r.ReceiptId"
+                                                               class="btn btn-info btn-sm ml-2">
+                                                                <i class="fas fa-file-alt"></i> تفاصيل
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">لا توجد إيصالات</span>
+                                }
+                            </td>
+                          
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <nav>
+            <ul class="pagination" id="pagination"></ul>
+        </nav>
+        <div class="pagination-info" id="paginationInfo"></div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        $(document).ready(function () {
+            const allRows = Array.from(document.querySelectorAll('#tableBody > tr'));
+            const pageSize = 20;
+            let currentPage = 1;
+            const maxVisiblePages = 5;
+
+            setupPagination();
+
+            // Search - Fixed to only search plumber names
+            $("#searchInput").on("input", function () {
+                currentPage = 1;
+                setupPagination();
+            });
+
+            // Success message
+            var successMessage = '@TempData["Success"]';
+            if (successMessage) {
+                Swal.fire({
+                    icon: "success",
+                    title: "تم بنجاح",
+                    text: successMessage,
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            }
+
+            // Delete with SweetAlert
+            $(".delete-btn").click(function () {
+                var id = $(this).data("id");
+                Swal.fire({
+                    title: "هل أنت متأكد؟",
+                    text: "سيتم حذف هذا السباك بشكل دائم.",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonColor: "#d33",
+                    cancelButtonColor: "#3085d6",
+                    confirmButtonText: "نعم، احذفه!",
+                    cancelButtonText: "إلغاء"
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.post("@Url.Action("Delete", "Plumber")", { id: id })
+                            .done(function (data) {
+                                if (data.success) {
+                                    $("#row-" + id).fadeOut(300, function () {
+                                        $(this).remove();
+                                        setupPagination();
+                                    });
+                                    Swal.fire("تم الحذف!", data.message, "success");
+                                } else {
+                                    Swal.fire("خطأ!", data.message, "error");
+                                }
+                            })
+                            .fail(function () {
+                                Swal.fire("خطأ!", "حدث خطأ أثناء الاتصال بالخادم", "error");
+                            });
+                    }
+                });
+            });
+
+            // Payment for individual receipt (positive or negative)
+            $("form[action*='AddPaymentToPlumber']").on("submit", function (e) {
+                e.preventDefault();
+                var form = $(this);
+                var amountInput = form.find("input[name='amount']");
+                var amount = parseFloat(amountInput.val());
+
+                if (isNaN(amount) || amount === 0) {
+                    Swal.fire("خطأ!", "يرجى إدخال مبلغ صحيح (موجب أو سالب)", "error");
+                    return false;
+                }
+
+                $.post(form.attr("action"), form.serialize())
+                    .done(function (data) {
+                        if (data.success) {
+                            Swal.fire({
+                                icon: "success",
+                                title: "تمت العملية",
+                                text: data.message,
+                                timer: 2000,
+                                showConfirmButton: false
+                            }).then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire("خطأ!", data.message, "error");
+                        }
+                    })
+                    .fail(function () {
+                        Swal.fire("خطأ!", "حدث خطأ أثناء الاتصال بالخادم", "error");
+                    });
+            });
+
+            // Pagination setup - Fixed search logic
+            function setupPagination() {
+                const searchText = $("#searchInput").val().toLowerCase().trim();
+
+                // Filter rows based on plumber name only (not nested content)
+                const filteredRows = allRows.filter(row => {
+                    if (searchText === "") return true;
+
+                    const plumberName = row.querySelector('.plumber-name').textContent.toLowerCase();
+                    const dataPlumberName = row.getAttribute("data-plumbername");
+
+                    return plumberName.includes(searchText) ||
+                           dataPlumberName.includes(searchText);
+                });
+
+                // Hide all rows first
+                allRows.forEach(r => r.style.display = "none");
+
+                const totalItems = filteredRows.length;
+                const pageCount = Math.ceil(totalItems / pageSize);
+                const pagination = $("#pagination");
+                const info = $("#paginationInfo");
+
+                pagination.empty();
+
+                if (totalItems === 0) {
+                    info.text("لا توجد نتائج تطابق البحث");
+                    return;
+                }
+
+                const startItem = ((currentPage - 1) * pageSize) + 1;
+                const endItem = Math.min(currentPage * pageSize, totalItems);
+
+                info.text(`عرض ${startItem}-${endItem} من ${totalItems} سباك`);
+
+                if (pageCount > 1) {
+                    // Previous button
+                    const prevLi = $("<li>", {
+                        class: `page-item ${currentPage === 1 ? 'disabled' : ''}`
+                    }).html('<a class="page-link" href="#"><i class="fas fa-chevron-right"></i></a>')
+                        .click(function (e) {
+                            e.preventDefault();
+                            if (currentPage > 1) {
+                                currentPage--;
+                                setupPagination();
+                            }
+                        }).appendTo(pagination);
+
+                    // Calculate page range
+                    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+                    let endPage = Math.min(pageCount, startPage + maxVisiblePages - 1);
+
+                    // Adjust if we're near the end
+                    if (endPage - startPage < maxVisiblePages - 1) {
+                        startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                    }
+
+                    // Page numbers
+                    for (let i = startPage; i <= endPage; i++) {
+                        $("<li>", { class: `page-item ${i === currentPage ? "active" : ""}` })
+                            .html(`<a class="page-link" href="#" data-page="${i}">${i}</a>`)
+                            .click(function (e) {
+                                e.preventDefault();
+                                currentPage = i;
+                                setupPagination();
+                            })
+                            .appendTo(pagination);
+                    }
+
+                    // Next button
+                    const nextLi = $("<li>", {
+                        class: `page-item ${currentPage === pageCount ? 'disabled' : ''}`
+                    }).html('<a class="page-link" href="#"><i class="fas fa-chevron-left"></i></a>')
+                        .click(function (e) {
+                            e.preventDefault();
+                            if (currentPage < pageCount) {
+                                currentPage++;
+                                setupPagination();
+                            }
+                        }).appendTo(pagination);
+                }
+
+                showPage(currentPage, filteredRows);
+            }
+
+            function showPage(page, filteredRows) {
+                const start = (page - 1) * pageSize;
+                const end = start + pageSize;
+
+                // Show only rows for current page
+                filteredRows.forEach((row, index) => {
+                    row.style.display = (index >= start && index < end) ? "" : "none";
+                });
+            }
+        });
+    </script>
+}
+
+<style>
+    /* Add this new style for the plumber total section */
+    .plumber-total-section {
+        border: 1px solid #e9ecef;
+        background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    }
+
+   
+
+    /* Status badges */
+    .status-badge {
+        padding: 0.35rem 0.75rem;
+        border-radius: 50px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .bg-warning-light {
+        background-color: rgba(245, 158, 11, 0.1);
+        color: #f59e0b;
+    }
+
+    .bg-danger-light {
+        background-color: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+    }
+
+    .bg-success-light {
+        background-color: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+    }
+
+    /* Text colors */
+    .text-warning {
+        color: #f59e0b !important;
+    }
+
+    .text-danger {
+        color: #ef4444 !important;
+    }
+
+    .text-success {
+        color: #10b981 !important;
+    }
+
+   
+
+    /* Pagination improvements */
+    .pagination {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 1rem;
+        justify-content: center;
+        list-style: none;
+        padding: 0;
+    }
+
+    .page-item {
+        display: inline-block;
+    }
+
+    .page-link {
+        padding: 0.5rem 0.75rem;
+        border-radius: 6px;
+        border: 1px solid var(--gray-300);
+        color: var(--gray-700);
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+        .page-link:hover {
+            background-color: var(--gray-100);
+        }
+
+    .page-item.active .page-link {
+        background-color: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    .page-item.disabled .page-link {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .pagination-info {
+        text-align: center;
+        margin-top: 0.5rem;
+        color: var(--gray-600);
+    }
+
+    /* Responsive adjustments */
+    @@media (max-width: 768px) {
+        .plumber-total-section .d-flex {
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .action-cell {
+            flex-direction: column;
+        }
+
+        .btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .search-bar {
+            max-width: 100%;
+        }
+
+        .pagination {
+            flex-wrap: wrap;
+        }
+    }
+</style>

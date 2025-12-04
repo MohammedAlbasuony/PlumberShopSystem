@@ -1,0 +1,200 @@
+﻿@model B_B.BLL.ViewModels.ReceiptListVM
+
+<div class="page-content active">
+    <div class="page-header">
+        <h1 class="page-title">مراجعة الإيصال</h1>
+        <a asp-action="@(Model.ReceiptType == "In" ? "InReceipts" : "OutReceipts")" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> رجوع
+        </a>
+    </div>
+
+    <div class="content-section">
+        <div class="card">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label"><strong>التاريخ:</strong></label>
+                    <div class="form-control-static">@Model.Date.ToShortDateString()</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label"><strong>النوع:</strong></label>
+                    <div class="form-control-static">@Model.ReceiptType</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label"><strong>المورد:</strong></label>
+                    <div class="form-control-static">@Model.SupplierName</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label"><strong>السباك:</strong></label>
+                    <div class="form-control-static">@Model.PlumberName</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label"><strong>العميل:</strong></label>
+                    <div class="form-control-static">@Model.ClientName</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label"><strong>المرتجع:</strong></label>
+                    <div class="form-control-static">@Model.RefundAmount.ToString("N2")</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label"><strong>الإجمالي:</strong></label>
+                    <div class="form-control-static">@Model.Total.ToString("N2")</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label"><strong>المدفوع:</strong></label>
+                    <div class="form-control-static">@Model.PaidAmount.ToString("N2")</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label"><strong>المتبقي:</strong></label>
+                    <div class="form-control-static">@Model.RemainingAmount.ToString("N2")</div>
+                </div>
+            </div>
+
+            <!-- ======================== -->
+            <!-- 🟢 SUPPLIER SUMMARY PART -->
+            <!-- ======================== -->
+            <h3 class="mt-4 section-title text-success">تفاصيل الموردين</h3>
+            <div class="table-container">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>المورد</th>
+                            <th>الإجمالي قبل الخصم</th>
+                            <th>الخصم (%)</th>
+                            <th>الإجمالي بعد الخصم</th>
+                            <th>المبالغ المرتجعة</th>
+                            <th>الصافي بعد الخصم</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var s in Model.SupplierSummaries)
+                        {
+                            var netAfterDiscount = s.TotalAmount - s.RefundAmount;
+                            <tr>
+                                <td>@s.SupplierName</td>
+                                <td>@s.TotalBeforeDiscount.ToString("N2")</td>
+                                <td>@s.DiscountPercentage.ToString("N2")%</td>
+                                <td>@s.TotalAmount.ToString("N2")</td>
+                                <td>@s.RefundAmount.ToString("N2")</td>
+                                <td>@netAfterDiscount.ToString("N2")</td>
+                            </tr>
+                        }
+                    </tbody>
+
+                </table>
+            </div>
+
+            <!-- ======================== -->
+            <!-- 🟡 PRODUCT DETAILS PART -->
+            <!-- ======================== -->
+            <h4 class="mt-4 section-title text-info">تفاصيل المنتجات</h4>
+            <div class="table-container">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>المنتج</th>
+                            <th>الكمية</th>
+                            <th>المرتجع</th>
+                            <th>سعر الوحدة</th>
+                            <th>الخصم (%)</th>
+                            <th>قيمة المرتجع</th> <!-- 🟢 new -->
+                            <th>الإجمالي بعد الخصم</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var d in Model.ReceiptDetails)
+                        {
+                            var netQuantity = d.Quantity - d.RefundQuantity; // ✅ after refund
+                            var discountedTotal = (d.UnitPrice * netQuantity) * (1 - (d.DiscountPercentage / 100m));
+                            var refundAmount = (d.UnitPrice * d.RefundQuantity) * (1 - (d.DiscountPercentage / 100m)); // 🟢 refund value
+
+                            <tr>
+                                <td>@d.ProductName</td>
+                                <td>@d.Quantity</td>
+                                <td>@d.RefundQuantity</td>
+                                <td>@($"{d.UnitPrice:N2}")</td>
+                                <td>@($"{d.DiscountPercentage:N2}")%</td>
+                                <td>@($"{refundAmount:N2}")</td> <!-- 🟢 show refund amount -->
+                                <td>@($"{discountedTotal:N2}")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+
+
+            <!-- ACTION BUTTONS -->
+            <div class="mt-4 action-buttons">
+                @if (Model.ReceiptType == "In")
+                {
+                    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">
+                        <i class="fas fa-edit"></i> تعديل
+                    </a>
+                }
+                else if (Model.ReceiptType == "Out")
+                {
+                    if (Model.ReceiptStatus == "Draft")
+                    {
+                        <form asp-action="Approve" method="post" class="d-inline">
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-check"></i> اعتماد
+                            </button>
+                        </form>
+                        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">
+                            <i class="fas fa-edit"></i> تعديل
+                        </a>
+                        <button type="button" class="btn btn-danger" id="deleteBtn">
+                            <i class="fas fa-trash"></i> حذف
+                        </button>
+                    }
+                    else if (Model.ReceiptStatus == "Approved")
+                    {
+                        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">
+                            <i class="fas fa-edit"></i> تعديل
+                        </a>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        document.getElementById("deleteBtn")?.addEventListener("click", function () {
+            Swal.fire({
+                title: "حذف هذا الإيصال؟",
+                text: "لا يمكن التراجع عن هذا الإجراء!",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#d33",
+                cancelButtonColor: "#3085d6",
+                confirmButtonText: "نعم، احذفه!"
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch(`/Receipt/Delete?id=@Model.Id`, {
+                        method: "POST"
+                    }).then(response => {
+                        if (response.ok) {
+                            Swal.fire(
+                                "تم الحذف!",
+                                "تم حذف الإيصال بنجاح.",
+                                "success"
+                            ).then(() => {
+                                window.location.href = "/Receipt/OutReceipts";
+                            });
+                        } else {
+                            Swal.fire(
+                                "خطأ",
+                                "حدث خطأ أثناء الحذف.",
+                                "error"
+                            );
+                        }
+                    });
+                }
+            });
+        });
+    </script>
+}

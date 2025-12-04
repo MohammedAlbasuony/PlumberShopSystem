@@ -1,0 +1,65 @@
+﻿@model IEnumerable<B_B.BLL.ViewModels.ReceiptListVM>
+
+<h2>All Receipts</h2>
+<a asp-action="CreateInReceipt" class="btn btn-success">New In Receipt</a>
+<a asp-action="CreateOutReceipt" class="btn btn-primary">New Out Receipt</a>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Supplier</th>
+            <th>Client</th>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Total</th>
+            <th>Paid</th>
+            <th>Remaining</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var r in Model)
+        {
+            <tr>
+                <td>@r.SupplierName</td>
+                <td>@r.ClientName</td>
+                <td>@r.Date.ToShortDateString()</td>
+                <td>@r.ReceiptType</td>
+                <td>@r.Total</td>
+                <td>@r.PaidAmount</td>
+                <td>@r.RemainingAmount</td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@r.Id" class="btn btn-warning btn-sm">Edit</a>
+                    <a asp-action="Review" asp-route-id="@r.Id" class="btn btn-info btn-sm">Review</a>
+                    <button class="btn btn-danger btn-sm delete-btn" data-id="@r.Id">Delete</button>
+                </td>
+
+            </tr>
+        }
+    </tbody>
+</table>
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        $(document).on("click", ".delete-btn", function () {
+            var id = $(this).data("id");
+
+            Swal.fire({
+                title: "Are you sure?",
+                text: "You won't be able to revert this!",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#d33",
+                cancelButtonColor: "#3085d6",
+                confirmButtonText: "Yes, delete it!"
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.post("/Receipt/Delete", { id: id }, function () {
+                        location.reload();
+                    });
+                }
+            });
+        });
+    </script>
+}
+

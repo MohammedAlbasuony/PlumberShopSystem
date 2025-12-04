@@ -1,0 +1,1031 @@
+﻿@model B_B.BLL.ViewModels.Reports.ReportSummaryVM
+@{
+    var selectedYear = Context.Request.Query["year"].ToString();
+    if (string.IsNullOrEmpty(selectedYear))
+    {
+        selectedYear = DateTime.Now.Year.ToString();
+    }
+    var years = Enumerable.Range(2020, DateTime.Now.Year - 2019).Reverse();
+}
+
+<div class="page-content active" dir="rtl" style="text-align:right;">
+    <div class="page-header">
+        <h1 class="page-title"><i class="fas fa-file-alt"></i> تقرير إيصالات المبيعات</h1>
+    </div>
+
+    <div class="content-section">
+        <!-- Summary Cards -->
+        <div class="summary-cards">
+            <div class="summary-card">
+                <div class="card-icon bg-primary"><i class="fas fa-sack-dollar"></i></div>
+                <div class="card-content">
+                    <span class="card-label">إجمالي الصرف</span>
+                    <span class="card-value text-primary">@Model.TotalAmount</span>
+                </div>
+            </div>
+            <div class="summary-card">
+                <div class="card-icon bg-info"><i class="fas fa-receipt"></i></div>
+                <div class="card-content">
+                    <span class="card-label">عدد الإيصالات</span>
+                    <span class="card-value">@Model.TotalCount</span>
+                </div>
+            </div>
+            <div class="summary-card">
+                <div class="card-icon bg-success"><i class="fas fa-check-circle"></i></div>
+                <div class="card-content">
+                    <span class="card-label">المدفوع</span>
+                    <span class="card-value text-success">@Model.TotalPaid</span>
+                </div>
+            </div>
+            <div class="summary-card">
+                <div class="card-icon bg-warning"><i class="fas fa-exclamation-circle"></i></div>
+                <div class="card-content">
+                    <span class="card-label">المتبقي</span>
+                    <span class="card-value text-warning">@Model.TotalRemaining</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Table -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3><i class="fas fa-list"></i> تفاصيل الإيصالات</h3>
+                <div class="table-controls">
+                    <span class="table-info" id="tableInfo">عرض جميع النتائج</span>
+                </div>
+            </div>
+
+            <!-- Enhanced Filter Section -->
+            <div class="filter-card">
+                <div class="filter-header">
+                    <i class="fas fa-filter"></i>
+                    <h3>تصفية التقرير</h3>
+                </div>
+                <div class="filter-body">
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label for="year" class="filter-label">
+                                <i class="fas fa-calendar-alt"></i>
+                                السنة
+                            </label>
+                            <select id="year" name="year" class="form-select filter-select" onchange="applyYearFilter()">
+                                @foreach (var y in years)
+                                {
+                                    <option value="@y" selected="@(y.ToString() == selectedYear)">@y</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="filter-group">
+                            <label for="clientFilter" class="filter-label">
+                                <i class="fas fa-users"></i>
+                                تصفية حسب العميل
+                            </label>
+                            <select id="clientFilter" class="form-select filter-select">
+                                <option value="all">جميع العملاء</option>
+                                @foreach (var client in Model.Receipts.Select(r => r.PartyName).Distinct().OrderBy(c => c))
+                                {
+                                    <option value="@client">@client</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="filter-group">
+                            <label for="amountFilter" class="filter-label">
+                                <i class="fas fa-money-bill-wave"></i>
+                                تصفية حسب المبلغ
+                            </label>
+                            <select id="amountFilter" class="form-select filter-select">
+                                <option value="all">جميع المبالغ</option>
+                                <option value="0-1000">أقل من 1,000</option>
+                                <option value="1000-5000">1,000 - 5,000</option>
+                                <option value="5000-10000">5,000 - 10,000</option>
+                                <option value="10000+">أكثر من 10,000</option>
+                                @* <option value="sort-asc">ترتيب من الأقل للأكثر</option>
+                                <option value="sort-desc">ترتيب من الأكثر للأقل</option> *@
+                            </select>
+
+                        </div>
+                    </div>
+
+                    <div class="filter-row">
+                        <!-- Date Range Filter -->
+                        <div class="filter-group">
+                            <label class="filter-label">
+                                <i class="fas fa-calendar-day"></i>
+                                الفترة الزمنية
+                            </label>
+                            <div class="date-range-container">
+                                <div class="date-input-group">
+                                    <label for="fromDate" class="date-label">من</label>
+                                    <input type="date" id="fromDate" class="date-input" />
+                                </div>
+                                <div class="date-input-group">
+                                    <label for="toDate" class="date-label">إلى</label>
+                                    <input type="date" id="toDate" class="date-input" />
+                                </div>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="clearDates">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="filter-group search-group">
+                            <label for="searchInput" class="filter-label">
+                                <i class="fas fa-search"></i>
+                                بحث متقدم
+                            </label>
+                            <div class="search-container">
+                                <input type="text" id="searchInput" class="search-input" placeholder="ابحث في الإيصالات..." />
+                                <button type="button" class="search-btn" id="clearSearch">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="filter-group">
+                            <label for="remainingFilter" class="filter-label">
+                                <i class="fas fa-exclamation-circle"></i>
+                                العملاء غير المسددين بالكامل
+                            </label>
+                            <select id="remainingFilter" class="form-select filter-select">
+                                <option value="all">الكل</option>
+                                <option value="withRemaining">يوجد مبلغ متبقي</option>
+                            </select>
+                        </div>
+
+                    </div>
+
+                    <div class="filter-row">
+                        <div class="filter-actions">
+                            <button type="button" class="btn btn-outline-secondary" id="resetFilters">
+                                <i class="fas fa-redo"></i> إعادة تعيين
+                            </button>
+                            <button type="button" class="btn btn-outline-primary ms-2" id="printFilteredReport">
+                                <i class="fas fa-print"></i> طباعة التقرير
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table class="table" id="receiptsTable">
+                    <thead>
+                        <tr>
+                            <th>رقم</th>
+                            <th>العميل</th>
+                            <th>التاريخ</th>
+                            <th>الإجمالي</th>
+                            <th>قيمة المرتجع</th>
+                            <th>المدفوع</th>
+                            <th>المتبقي</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        @foreach (var item in Model.Receipts)
+                        {
+                            <tr data-client="@item.PartyName" data-amount="@item.TotalAmount" data-date="@item.Date.ToString("yyyy-MM-dd")"
+                                data-remaining="@(item.TotalAmount - item.PaidAmount)">
+                                
+                                <td>@item.Id</td>
+                                <td>@item.PartyName</td>
+                                <td>@item.Date.ToShortDateString()</td>
+                                <td>@($"{item.TotalAmount:N2}")</td>
+                                <td>@($"{item.RefundAmount:N2}")</td>
+                                <td class="text-success">@($"{item.PaidAmount:N2}")</td>
+                                <td class="text-warning">@($"{(item.TotalAmount - item.PaidAmount):N2}")</td>
+                            </tr>
+                        }
+
+                        @* ✅ Totals Row *@
+                        <tr class="table-secondary fw-bold totals-row">
+                            <td colspan="3" style="text-align:center;">الإجمالي الكلي</td>
+                            <td id="totalAmount">
+                                @($"{Model.Receipts.Sum(r => r.TotalAmount):N2}")
+                            </td>
+                            <td id="totalRefund">
+                                @($"{Model.Receipts.Sum(r => r.RefundAmount):N2}")
+                            </td>
+                            <td class="text-success" id="totalPaid">
+                                @($"{Model.Receipts.Sum(r => r.PaidAmount):N2}")
+                            </td>
+                            <td class="text-warning" id="totalRemaining">
+                                @($"{Model.Receipts.Sum(r => (r.TotalAmount - r.PaidAmount)):N2}")
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- Pagination Controls -->
+                <div class="pagination-container" id="paginationContainer">
+                    <div class="pagination-info" id="paginationInfo"></div>
+                    <div class="pagination-controls">
+                        <button class="pagination-btn" id="firstPage" disabled>
+                            <i class="fas fa-angle-double-right"></i>
+                        </button>
+                        <button class="pagination-btn" id="prevPage" disabled>
+                            <i class="fas fa-angle-right"></i>
+                        </button>
+
+                        <div class="pagination-numbers" id="paginationNumbers"></div>
+
+                        <button class="pagination-btn" id="nextPage">
+                            <i class="fas fa-angle-left"></i>
+                        </button>
+                        <button class="pagination-btn" id="lastPage">
+                            <i class="fas fa-angle-double-left"></i>
+                        </button>
+                    </div>
+                    <div class="page-size-selector">
+                        <label for="pageSize">عرض:</label>
+                        <select id="pageSize" class="form-select">
+                            <option value="10">10</option>
+                            <option value="25" selected>25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const rows = Array.from(document.querySelectorAll('#receiptsTable tbody tr:not(.totals-row)'));
+            const searchInput = document.getElementById('searchInput');
+            const clientFilter = document.getElementById('clientFilter');
+            const amountFilter = document.getElementById('amountFilter');
+            const remainingFilter = document.getElementById('remainingFilter'); // ✅ New filter
+            const fromDate = document.getElementById('fromDate');
+            const toDate = document.getElementById('toDate');
+            const clearSearch = document.getElementById('clearSearch');
+            const clearDates = document.getElementById('clearDates');
+            const resetFilters = document.getElementById('resetFilters');
+            const tableInfo = document.getElementById('tableInfo');
+
+            // Pagination elements
+            const paginationContainer = document.getElementById('paginationContainer');
+            const paginationInfo = document.getElementById('paginationInfo');
+            const paginationNumbers = document.getElementById('paginationNumbers');
+            const firstPageBtn = document.getElementById('firstPage');
+            const prevPageBtn = document.getElementById('prevPage');
+            const nextPageBtn = document.getElementById('nextPage');
+            const lastPageBtn = document.getElementById('lastPage');
+            const pageSizeSelect = document.getElementById('pageSize');
+
+            // Pagination state
+            let currentPage = 1;
+            let pageSize = parseInt(pageSizeSelect.value);
+            let totalPages = 1;
+            let filteredRows = [];
+
+            // Set default date range (current month)
+            const today = new Date();
+            const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+            fromDate.value = firstDayOfMonth.toISOString().split('T')[0];
+            toDate.value = today.toISOString().split('T')[0];
+
+            // Clear search
+            clearSearch.addEventListener('click', function () {
+                searchInput.value = '';
+                filterTable();
+            });
+
+            // Clear dates
+            clearDates.addEventListener('click', function () {
+                fromDate.value = '';
+                toDate.value = '';
+                filterTable();
+            });
+
+            // Reset all filters
+            resetFilters.addEventListener('click', function () {
+                searchInput.value = '';
+                clientFilter.value = 'all';
+                amountFilter.value = 'all';
+                remainingFilter.value = 'all'; // ✅ Reset remaining filter
+                fromDate.value = firstDayOfMonth.toISOString().split('T')[0];
+                toDate.value = today.toISOString().split('T')[0];
+                currentPage = 1;
+                filterTable();
+            });
+
+            // Page size change
+            pageSizeSelect.addEventListener('change', function () {
+                pageSize = parseInt(this.value);
+                currentPage = 1;
+                updatePagination();
+            });
+
+            // Pagination button events
+            firstPageBtn.addEventListener('click', () => goToPage(1));
+            prevPageBtn.addEventListener('click', () => goToPage(currentPage - 1));
+            nextPageBtn.addEventListener('click', () => goToPage(currentPage + 1));
+            lastPageBtn.addEventListener('click', () => goToPage(totalPages));
+
+            // Trigger filters automatically
+            clientFilter.addEventListener('change', filterTable);
+            amountFilter.addEventListener('change', filterTable);
+            remainingFilter.addEventListener('change', filterTable); // ✅ New filter listener
+            fromDate.addEventListener('change', filterTable);
+            toDate.addEventListener('change', filterTable);
+
+            // Search with debounce
+            let searchTimeout;
+            searchInput.addEventListener('input', function () {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(filterTable, 300);
+            });
+
+                    function filterTable() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const selectedClient = clientFilter.value;
+            const selectedAmount = amountFilter.value;
+            const selectedRemaining = remainingFilter.value;
+            const fromDateValue = fromDate.value;
+            const toDateValue = toDate.value;
+
+            filteredRows = rows.filter(row => {
+                const clientName = row.getAttribute('data-client');
+                const amount = parseFloat(row.getAttribute('data-amount')) || 0;
+                const paid = parseFloat(row.cells[5].textContent.replace(/,/g, '')) || 0;
+                const remaining = amount - paid;
+                const rowDate = row.getAttribute('data-date');
+                const text = row.textContent.toLowerCase();
+
+                return (
+                    (!searchTerm || text.includes(searchTerm)) &&
+                    (selectedClient === 'all' || clientName === selectedClient) &&
+                    filterByAmount(remaining, selectedAmount) &&
+                    filterByDate(rowDate, fromDateValue, toDateValue) &&
+                    (selectedRemaining !== 'withRemaining' || remaining > 0)
+                );
+            });
+
+                            // Sorting
+        if (selectedAmount === 'sort-asc') {
+            filteredRows.sort((a, b) => {
+                const remainingA = parseFloat(a.getAttribute('data-remaining')) || 0;
+                const remainingB = parseFloat(b.getAttribute('data-remaining')) || 0;
+                return remainingA - remainingB;
+            });
+        } else if (selectedAmount === 'sort-desc') {
+            filteredRows.sort((a, b) => {
+                const remainingA = parseFloat(a.getAttribute('data-remaining')) || 0;
+                const remainingB = parseFloat(b.getAttribute('data-remaining')) || 0;
+                return remainingB - remainingA;
+            });
+        } else {
+            // Default sort by date descending
+            filteredRows.sort((a, b) => new Date(b.getAttribute('data-date')) - new Date(a.getAttribute('data-date')));
+        }
+
+
+            currentPage = 1;
+            updateTable();
+            updatePagination();
+            updateTotals();
+            updateTableInfo();
+        }
+
+        function filterByAmount(remaining, type) {
+            if (type === 'all') return true;
+            if (type === '0-1000') return remaining < 1000;
+            if (type === '1000-5000') return remaining >= 1000 && remaining < 5000;
+            if (type === '5000-10000') return remaining >= 5000 && remaining < 10000;
+            if (type === '10000+') return remaining >= 10000;
+            // Sorting options do not filter
+            if (type === 'sort-asc' || type === 'sort-desc') return true;
+            return true;
+        }
+
+            function filterByDate(rowDate, from, to) {
+                if (!from && !to) return true;
+                const date = new Date(rowDate);
+                if (from && date < new Date(from)) return false;
+                if (to) {
+                    const toD = new Date(to);
+                    toD.setHours(23, 59, 59, 999);
+                    if (date > toD) return false;
+                }
+                return true;
+            }
+
+            function updateTable() {
+                rows.forEach(row => row.style.display = 'none');
+                const startIndex = (currentPage - 1) * pageSize;
+                const endIndex = startIndex + pageSize;
+                const pageRows = filteredRows.slice(startIndex, endIndex);
+                pageRows.forEach(row => row.style.display = '');
+            }
+
+            function updatePagination() {
+                totalPages = Math.ceil(filteredRows.length / pageSize);
+                const startItem = (currentPage - 1) * pageSize + 1;
+                const endItem = Math.min(currentPage * pageSize, filteredRows.length);
+                paginationInfo.textContent = `عرض ${startItem}-${endItem} من ${filteredRows.length}`;
+
+                firstPageBtn.disabled = currentPage === 1;
+                prevPageBtn.disabled = currentPage === 1;
+                nextPageBtn.disabled = currentPage === totalPages;
+                lastPageBtn.disabled = currentPage === totalPages;
+
+                paginationNumbers.innerHTML = '';
+                const maxPagesToShow = 5;
+                let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+                let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+                if (endPage - startPage + 1 < maxPagesToShow) startPage = Math.max(1, endPage - maxPagesToShow + 1);
+
+                for (let i = startPage; i <= endPage; i++) {
+                    const pageBtn = document.createElement('button');
+                    pageBtn.className = `page-number ${i === currentPage ? 'active' : ''}`;
+                    pageBtn.textContent = i;
+                    pageBtn.addEventListener('click', () => goToPage(i));
+                    paginationNumbers.appendChild(pageBtn);
+                }
+            }
+
+            function goToPage(page) {
+                if (page < 1 || page > totalPages) return;
+                currentPage = page;
+                updateTable();
+                updatePagination();
+            }
+
+            function updateTotals() {
+                const getNumber = text => parseFloat(text.replace(/,/g, '')) || 0;
+                const totalAmount = filteredRows.reduce((sum, r) => sum + parseFloat(r.getAttribute('data-amount')) || 0, 0);
+                const totalRefund = filteredRows.reduce((sum, r) => sum + getNumber(r.cells[4].textContent), 0);
+                const totalPaid = filteredRows.reduce((sum, r) => sum + getNumber(r.cells[5].textContent), 0);
+                const totalRemaining = totalAmount - totalPaid;
+
+                document.getElementById('totalAmount').textContent = totalAmount.toLocaleString('ar-EG', { minimumFractionDigits: 2 });
+                document.getElementById('totalRefund').textContent = totalRefund.toLocaleString('ar-EG', { minimumFractionDigits: 2 });
+                document.getElementById('totalPaid').textContent = totalPaid.toLocaleString('ar-EG', { minimumFractionDigits: 2 });
+                document.getElementById('totalRemaining').textContent = totalRemaining.toLocaleString('ar-EG', { minimumFractionDigits: 2 });
+            }
+
+            function updateTableInfo() {
+                const total = rows.length;
+                const filtered = filteredRows.length;
+                if (filtered === total)
+                    tableInfo.textContent = `عرض جميع ${total} إيصال`;
+                else
+                    tableInfo.textContent = `عرض ${filtered} من أصل ${total} إيصال`;
+            }
+
+            document.getElementById('printFilteredReport').addEventListener('click', function () {
+                const client = clientFilter.value;
+                const amount = amountFilter.value;
+                const remaining = remainingFilter.value; // ✅ Pass remaining filter
+                const from = fromDate.value;
+                const to = toDate.value;
+
+                const url = new URL('@Url.Action("PrintFilteredReport", "Reports")', window.location.origin);
+                if (client) url.searchParams.append('client', client);
+                if (amount) url.searchParams.append('amount', amount);
+                if (remaining) url.searchParams.append('remaining', remaining); // ✅ Add remaining to query
+                if (from) url.searchParams.append('from', from);
+                if (to) url.searchParams.append('to', to);
+
+                window.open(url, '_blank');
+            });
+
+            // Server-side year filter
+            window.applyYearFilter = function () {
+                document.getElementById('year').form?.submit();
+            };
+
+            // Initialize
+            filterTable();
+        });
+    </script>
+}
+
+@section Styles {
+<style>
+    /* Pagination Styles */
+    .pagination-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 1rem;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
+    }
+
+    .pagination-info {
+        color: #6c757d;
+        font-weight: 500;
+    }
+
+    .pagination-controls {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .pagination-btn {
+        padding: 0.5rem 0.75rem;
+        border: 1px solid #dee2e6;
+        background: white;
+        color: #495057;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+    }
+
+        .pagination-btn:hover:not(:disabled) {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        .pagination-btn:disabled {
+            background: #f8f9fa;
+            color: #6c757d;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+    .pagination-numbers {
+        display: flex;
+        gap: 0.25rem;
+    }
+
+    .page-number {
+        padding: 0.5rem 0.75rem;
+        border: 1px solid #dee2e6;
+        background: white;
+        color: #495057;
+        cursor: pointer;
+        border-radius: 4px;
+        min-width: 40px;
+        text-align: center;
+        transition: all 0.2s ease;
+    }
+
+        .page-number:hover:not(.active) {
+            background: #e9ecef;
+            border-color: #adb5bd;
+        }
+
+        .page-number.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+    .page-size-selector {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+        .page-size-selector label {
+            color: #495057;
+            font-weight: 500;
+            margin: 0;
+        }
+
+        .page-size-selector .form-select {
+            width: auto;
+            display: inline-block;
+        }
+
+    
+
+
+
+        /* Enhanced Filter Styles */
+        .filter-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+            border: 1px solid #e9ecef;
+        }
+
+        .filter-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+            .filter-header i {
+                font-size: 1.2rem;
+            }
+
+            .filter-header h3 {
+                margin: 0;
+                font-size: 1.1rem;
+                font-weight: 600;
+            }
+
+        .filter-body {
+            padding: 1.5rem;
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .search-group {
+            flex: 2;
+            min-width: 300px;
+        }
+
+        .filter-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #495057;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+            .filter-label i {
+                color: #6c757d;
+                font-size: 0.9rem;
+            }
+
+        .filter-select {
+            width: 100%;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            padding: 0.5rem 0.75rem;
+            transition: all 0.2s ease;
+        }
+
+            .filter-select:focus {
+                border-color: #667eea;
+                box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+            }
+
+        /* Date Range Styles */
+        .date-range-container {
+            display: flex;
+            gap: 0.75rem;
+            align-items: end;
+        }
+
+        .date-input-group {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .date-label {
+            font-size: 0.8rem;
+            color: #6c757d;
+            font-weight: 500;
+        }
+
+        .date-input {
+            width: 100%;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+        }
+
+            .date-input:focus {
+                border-color: #667eea;
+                box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+            }
+
+        .search-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-input {
+            width: 100%;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            padding: 0.5rem 2.5rem 0.5rem 0.75rem;
+            transition: all 0.2s ease;
+        }
+
+            .search-input:focus {
+                border-color: #667eea;
+                box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+            }
+
+        .search-btn {
+            position: absolute;
+            left: 0.5rem;
+            background: none;
+            border: none;
+            color: #6c757d;
+            padding: 0.25rem;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+            .search-btn:hover {
+                background-color: #f8f9fa;
+                color: #495057;
+            }
+
+        .filter-actions {
+            display: flex;
+            align-items: flex-end;
+            gap: 0.75rem;
+            margin-top: 1.75rem;
+        }
+
+        /* Table Controls */
+        .table-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .table-info {
+            font-size: 0.875rem;
+            color: #6c757d;
+            font-weight: 500;
+        }
+
+        /* Dashboard Card Styles */
+        .dashboard-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+        }
+
+            .card-header h3 {
+                margin: 0;
+                font-size: 1.25rem;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+
+        .table-container {
+            padding: 1.5rem;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+            .table th {
+                background-color: var(--gray-50);
+                padding: 1rem;
+                font-weight: 600;
+                text-align: right;
+                border-bottom: 2px solid var(--gray-300);
+            }
+
+            .table td {
+                padding: 1rem;
+                border-bottom: 1px solid var(--gray-200);
+            }
+
+            .table tr:hover td {
+                background-color: var(--gray-50);
+            }
+
+        /* Summary Cards */
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .summary-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+            .summary-card:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+            }
+
+        .card-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .bg-primary {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        }
+
+        .bg-info {
+            background: linear-gradient(135deg, #0dcaf0, #0aa2c0);
+        }
+
+        .bg-success {
+            background: linear-gradient(135deg, #10b981, #047857);
+        }
+
+        .bg-warning {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+
+        .card-content {
+            flex: 1;
+        }
+
+        .card-label {
+            display: block;
+            font-size: 0.875rem;
+            color: var(--gray-600);
+            margin-bottom: 0.25rem;
+        }
+
+        .card-value {
+            display: block;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        /* Button Styles */
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s ease;
+            border: none;
+            font-size: 0.875rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+        }
+
+            .btn-primary:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            }
+
+        .btn-outline-secondary {
+            background: transparent;
+            color: #6c757d;
+            border: 1px solid #6c757d;
+        }
+
+            .btn-outline-secondary:hover {
+                background-color: #6c757d;
+                color: white;
+            }
+
+        .btn-sm {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.8rem;
+        }
+
+        /* Responsive */
+        @@media (max-width: 768px) {
+            .summary-cards {
+                grid-template-columns: 1fr;
+            }
+
+            .filter-row {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .filter-group, .search-group {
+                min-width: 100%;
+            }
+
+            .date-range-container {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .filter-actions {
+                width: 100%;
+                justify-content: flex-end;
+            }
+
+            .table-container {
+                overflow-x: auto;
+            }
+
+            .card-header {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+
+            .table-controls {
+                justify-content: center;
+            }
+        }
+        /* Responsive Design */
+        @@media (max-width: 768px) {
+            .pagination-container {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .pagination-controls {
+                order: 1;
+            }
+
+            .pagination-info {
+                order: 2;
+            }
+
+            .page-size-selector {
+                order: 3;
+            }
+        }
+
+        @@media (max-width: 480px) {
+            .summary-card {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .table {
+                font-size: 0.875rem;
+            }
+
+                .table th,
+                .table td {
+                    padding: 0.75rem 0.5rem;
+                }
+
+            .filter-actions {
+                flex-direction: column;
+            }
+        }
+        /* Text Color Utilities */
+        .text-warning {
+            color: #EB2828 !important;
+            font-weight: 600;
+        }
+
+        .text-success {
+            color: #10b981 !important;
+            font-weight: 600;
+        }
+
+        .text-primary {
+            color: #3b82f6 !important;
+            font-weight: 600;
+        }
+
+        .text-danger {
+            color: #ef4444 !important;
+            font-weight: 600;
+        }
+    </style>
+}

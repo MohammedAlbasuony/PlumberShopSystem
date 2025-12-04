@@ -1,0 +1,31 @@
+﻿@using B_B.DAL.Entity
+@model IEnumerable<Receipt>
+
+<h2>Supplier Purchases</h2>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Supplier</th>
+            <th>Product</th>
+            <th>Quantity</th>
+            <th>Unit Price</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var receipt in Model)
+        {
+            foreach (var detail in receipt.ReceiptDetails)
+            {
+                <tr>
+                    <td>@receipt.Date.ToShortDateString()</td>
+                    <td>@receipt.Supplier?.Name</td>
+                    <td>@detail.Product?.Name</td>
+                    <td>@detail.Quantity</td>
+                    <td>@detail.UnitPrice</td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>

@@ -1,0 +1,375 @@
+﻿@using B_B.DAL.Entity
+@model Product
+
+<div class="page-content active">
+    <div class="page-header">
+        <h1 class="page-title">إضافة منتج جديد</h1>
+        <a asp-action="Index" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> رجوع للقائمة
+        </a>
+    </div>
+
+    <div class="content-section">
+        <div asp-validation-summary="All" class="text-danger"></div>
+
+        <form asp-action="Create" method="post" class="product-form">
+            <div class="form-grid">
+                <!-- Basic Information -->
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-info-circle"></i> المعلومات الأساسية
+                    </h3>
+                    <div class="form-group">
+                        <label asp-for="Name" class="form-label">اسم المنتج *</label>
+                        <input asp-for="Name" class="form-input" placeholder="أدخل اسم المنتج" />
+                        <span asp-validation-for="Name" class="text-danger"></span>
+                    </div>
+
+                   
+                </div>
+
+                <!-- Pricing Information -->
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-tag"></i> معلومات التسعير
+                    </h3>
+                    <div class="form-group">
+                        <label asp-for="Cost" class="form-label">سعر التكلفة *</label>
+                        <div class="input-group">
+                            <input asp-for="Cost" class="form-input" type="number" step="0.01" min="0" placeholder="0.00" />
+                            <span class="input-group-text">$</span>
+                        </div>
+                        <span asp-validation-for="Cost" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label asp-for="SellingPrice" class="form-label">سعر البيع *</label>
+                        <div class="input-group">
+                            <input asp-for="SellingPrice" class="form-input" type="number" step="0.01" min="0" placeholder="0.00" />
+                            <span class="input-group-text">$</span>
+                        </div>
+                        <span asp-validation-for="SellingPrice" class="text-danger"></span>
+                    </div>
+
+                    <div class="profit-display">
+                        <div class="profit-item">
+                            <span class="profit-label">هامش الربح:</span>
+                            <span class="profit-value" id="profitMargin">0.00%</span>
+                        </div>
+                        <div class="profit-item">
+                            <span class="profit-label">قيمة الربح:</span>
+                            <span class="profit-value" id="profitValue">$0.00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stock Information -->
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-boxes"></i> معلومات المخزون
+                    </h3>
+                    <div class="form-group">
+                        <label asp-for="Quantity" class="form-label">الكمية في المخزون *</label>
+                        <input asp-for="Quantity" class="form-input" type="number" step="1" min="0" value="0" />
+                        <span asp-validation-for="Quantity" class="text-danger"></span>
+                    </div>
+
+                   
+
+                    <div class="stock-value">
+                        <div class="stock-item">
+                            <span class="stock-label">قيمة المخزون:</span>
+                            <span class="stock-value" id="stockValue">$0.00</span>
+                        </div>
+                    </div>
+                </div>
+
+               
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> حفظ المنتج
+                </button>
+                <a asp-action="Index" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> إلغاء
+                </a>
+                <button type="reset" class="btn btn-outline">
+                    <i class="fas fa-redo"></i> إعادة تعيين
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            // Calculate profit and stock value in real-time
+            function calculateValues() {
+                const cost = parseFloat($('#Cost').val()) || 0;
+                const sellingPrice = parseFloat($('#SellingPrice').val()) || 0;
+                const quantity = parseInt($('#Quantity').val()) || 0;
+
+                // Calculate profit
+                const profitValue = sellingPrice - cost;
+                const profitMargin = cost > 0 ? ((profitValue / cost) * 100) : 0;
+
+                // Update profit display
+                $('#profitValue').text('$' + profitValue.toFixed(2));
+                $('#profitMargin').text(profitMargin.toFixed(2) + '%');
+
+                // Update stock value
+                const stockValue = quantity * cost;
+                $('#stockValue').text('$' + stockValue.toFixed(2));
+
+                // Color code profit
+                const profitElement = $('#profitValue');
+                profitElement.removeClass('text-success text-danger');
+                if (profitValue > 0) {
+                    profitElement.addClass('text-success');
+                } else if (profitValue < 0) {
+                    profitElement.addClass('text-danger');
+                }
+            }
+
+            // Bind calculation to input changes
+            $('#Cost, #SellingPrice, #Quantity').on('input', calculateValues);
+
+            // Generate barcode if empty
+            $('#Barcode').on('focus', function() {
+                if (!$(this).val()) {
+                    const barcode = 'PRD' + Date.now().toString().slice(-8);
+                    $(this).val(barcode);
+                }
+            });
+
+            // Form validation
+            $('form').on('submit', function(e) {
+                const cost = parseFloat($('#Cost').val()) || 0;
+                const sellingPrice = parseFloat($('#SellingPrice').val()) || 0;
+
+                if (sellingPrice < cost) {
+                    e.preventDefault();
+                    alert('سعر البيع يجب أن يكون أكبر من أو يساوي سعر التكلفة');
+                    $('#SellingPrice').focus();
+                }
+            });
+
+            // Initialize calculations
+            calculateValues();
+        });
+    </script>
+
+    <style>
+        .product-form {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .form-section {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--gray-200);
+        }
+
+        .section-title {
+            color: var(--primary);
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--primary-light);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--gray-700);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--gray-300);
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            font-size: 1rem;
+        }
+
+            .form-input:focus {
+                outline: none;
+                border-color: var(--primary);
+                box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+            }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+        }
+
+            .input-group .form-input {
+                border-radius: 8px 0 0 8px;
+                margin: 0;
+            }
+
+            .input-group .input-group-text {
+                background: var(--gray-100);
+                border: 1px solid var(--gray-300);
+                border-left: none;
+                padding: 0.75rem;
+                border-radius: 0 8px 8px 0;
+                color: var(--gray-600);
+            }
+
+        .profit-display, .stock-value {
+            background: var(--gray-50);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+
+        .profit-item, .stock-item {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+            .profit-item:last-child, .stock-item:last-child {
+                margin-bottom: 0;
+            }
+
+        .profit-label, .stock-label {
+            font-weight: 600;
+            color: var(--gray-600);
+            flex: 1;
+        }
+
+        .profit-value, .stock-value {
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .text-success {
+            color: #10b981 !important;
+        }
+
+        .text-danger {
+            color: #ef4444 !important;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--gray-200);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            border: none;
+            cursor: pointer;
+            gap: 0.5rem;
+            text-decoration: none;
+            font-size: 1rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+        }
+
+            .btn-primary:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 4px 8px rgba(37, 99, 235, 0.3);
+            }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #6b7280, #4b5563);
+            color: white;
+            box-shadow: 0 2px 4px rgba(107, 114, 128, 0.2);
+        }
+
+            .btn-secondary:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 4px 8px rgba(107, 114, 128, 0.3);
+            }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--gray-300);
+            color: var(--gray-700);
+        }
+
+            .btn-outline:hover {
+                border-color: var(--primary);
+                color: var(--primary);
+            }
+
+        .form-text {
+            font-size: 0.875rem;
+            color: var(--gray-500);
+            margin-top: 0.25rem;
+        }
+
+        /* Responsive Design */
+        @@media (max-width: 768px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .form-section {
+                padding: 1rem;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        @@media (max-width: 480px) {
+            .page-header {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+
+            .form-section {
+                padding: 0.75rem;
+            }
+        }
+    </style>
+}
