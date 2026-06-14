@@ -12,7 +12,6 @@ namespace B_B.BLL.ViewModels
         [Required]
         public int ProductId { get; set; }
 
-        [Range(typeof(decimal), "0.01", "9999999", ErrorMessage = "Quantity must be at least 0.01")]
         public decimal Quantity { get; set; }
 
         public decimal Cost { get; set; }

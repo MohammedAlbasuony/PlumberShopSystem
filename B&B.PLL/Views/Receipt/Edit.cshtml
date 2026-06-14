@@ -71,6 +71,19 @@
 
             <!-- Receipt details -->
             <h4 class="mt-4 section-title">تفاصيل الإيصال</h4>
+
+            <!-- 🔥 NEW: Search inside receipt details -->
+            <div class="receipt-search-wrapper">
+                <div class="receipt-search-bar">
+                    <i class="fas fa-filter"></i>
+                    <input type="text" id="receiptSearch" class="receipt-search-input" placeholder="ابحث في المنتجات المضافة..." />
+                    <span id="receiptSearchCount" class="receipt-search-count"></span>
+                    <button type="button" id="clearReceiptSearch" class="receipt-search-clear d-none" title="مسح البحث">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+
             <div class="table-container">
                 <table class="table" id="receiptDetailsTable">
                     <thead>
@@ -146,6 +159,101 @@
             Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
         }
     );
+}
+
+@section Styles {
+    <style>
+        .receipt-search-wrapper {
+            margin-bottom: 12px;
+        }
+
+        .receipt-search-bar {
+            position: relative;
+            display: flex;
+            align-items: center;
+            background: #f8fafc;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+            .receipt-search-bar:focus-within {
+                border-color: #818cf8;
+                background: #fff;
+                box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.12);
+            }
+
+            .receipt-search-bar > i {
+                position: absolute;
+                right: 12px;
+                color: #94a3b8;
+                font-size: 0.85rem;
+                pointer-events: none;
+            }
+
+            .receipt-search-bar:focus-within > i {
+                color: #6366f1;
+            }
+
+        .receipt-search-input {
+            width: 100%;
+            padding: 9px 38px 9px 12px;
+            border: none;
+            outline: none;
+            background: transparent;
+            font-size: 0.88rem;
+            color: #334155;
+        }
+
+            .receipt-search-input::placeholder {
+                color: #94a3b8;
+            }
+
+        .receipt-search-count {
+            position: absolute;
+            left: 40px;
+            font-size: 0.72rem;
+            color: #94a3b8;
+            white-space: nowrap;
+            pointer-events: none;
+            transition: color 0.2s;
+        }
+
+            .receipt-search-count.active {
+                color: #6366f1;
+                font-weight: 600;
+            }
+
+        .receipt-search-clear {
+            position: absolute;
+            left: 10px;
+            background: none;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            padding: 4px;
+            font-size: 0.8rem;
+            border-radius: 4px;
+            transition: all 0.15s;
+        }
+
+            .receipt-search-clear:hover {
+                color: #ef4444;
+                background: #fee2e2;
+            }
+
+        #receiptDetailsTable tbody tr {
+            transition: opacity 0.15s ease, background-color 0.15s ease;
+        }
+
+            #receiptDetailsTable tbody tr.hidden-row {
+                display: none;
+            }
+
+            #receiptDetailsTable tbody tr.highlight-match {
+                background-color: #eef2ff !important;
+            }
+    </style>
 }
 
 @section Scripts {
@@ -244,12 +352,13 @@
             } else {
                 addProductRow(productId, productName, 1, price, cost, 0, 0);
             }
+            filterReceiptDetails();
         });
 
         function addProductRow(id, name, qty, price, cost, discount, refund){
             const safeName = escapeHtml(name);
             let row = `
-            <tr data-id="${id}" data-cost="${cost}">
+            <tr data-id="${id}" data-cost="${cost}" data-name="${safeName}">
                 <td>
                     <input type="hidden" name="ReceiptDetails[${detailIndex}].ProductId" value="${id}" />
                     ${safeName}
@@ -303,6 +412,7 @@
             $(this).closest("tr").remove();
             reindexDetails();  // <-- FIX
             updateGrandTotal();
+            filterReceiptDetails();
         });
 
         $(document).on("input", ".qty, .unitPrice, .discount, .refund, #PaidAmount", function(){
@@ -353,6 +463,50 @@
 
             addProductRow(productId, productName, quantity, unitPrice, cost, discount, refund);
         }
+
+        /* ----------------------- 🔥 RECEIPT DETAILS SEARCH ----------------------- */
+
+        function filterReceiptDetails() {
+            const searchTerm = ($("#receiptSearch").val() || "").trim().toLowerCase();
+            const rows = $("#receiptDetailsTable tbody tr");
+            const countEl = $("#receiptSearchCount");
+            const clearBtn = $("#clearReceiptSearch");
+            const totalRows = rows.length;
+
+            if (!searchTerm) {
+                rows.removeClass("hidden-row highlight-match");
+                countEl.text("").removeClass("active");
+                clearBtn.addClass("d-none");
+                return;
+            }
+
+            clearBtn.removeClass("d-none");
+            let matchCount = 0;
+
+            rows.each(function () {
+                const rowName = ($(this).data("name") || "").toLowerCase();
+                if (rowName.includes(searchTerm)) {
+                    $(this).removeClass("hidden-row").addClass("highlight-match");
+                    matchCount++;
+                } else {
+                    $(this).removeClass("highlight-match").addClass("hidden-row");
+                }
+            });
+
+            countEl.text(matchCount + " / " + totalRows).addClass("active");
+        }
+
+        $("#receiptSearch").on("input", filterReceiptDetails);
+
+        $("#clearReceiptSearch").on("click", function () {
+            $("#receiptSearch").val("").trigger("input").focus();
+        });
+
+        $("#receiptSearch").on("keydown", function (e) {
+            if (e.key === "Escape") {
+                $(this).val("").trigger("input");
+            }
+        });
 
         function escapeHtml(text){
             return text == null ? "" : text.toString()

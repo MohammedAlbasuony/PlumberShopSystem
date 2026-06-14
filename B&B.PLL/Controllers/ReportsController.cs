@@ -30,44 +30,22 @@ namespace B_B.PLL.Controllers
 
 
         [HttpGet]
-        public async Task<IActionResult> PrintFilteredReport(
-     string? client = null,
-     string? amount = null,
-     string? remaining = null, // ✅ Added remaining filter
-     DateTime? from = null,
-     DateTime? to = null)
+        public async Task<IActionResult> PrintFilteredReport(string? ids = null)
         {
             var reportSummary = await _reportService.GetOutReceiptsReportAsync();
 
-            // 🔹 Apply filters (matching client-side filters)
-            var filtered = reportSummary.Receipts.AsQueryable();
+            var receipts = reportSummary.Receipts.AsQueryable();
 
-            if (!string.IsNullOrEmpty(client) && client != "all")
-                filtered = filtered.Where(r => r.PartyName == client);
-
-            if (!string.IsNullOrEmpty(amount) && amount != "all")
+            if (!string.IsNullOrEmpty(ids))
             {
-                filtered = amount switch
-                {
-                    "0-1000" => filtered.Where(r => r.TotalAmount < 1000),
-                    "1000-5000" => filtered.Where(r => r.TotalAmount >= 1000 && r.TotalAmount < 5000),
-                    "5000-10000" => filtered.Where(r => r.TotalAmount >= 5000 && r.TotalAmount < 10000),
-                    "10000+" => filtered.Where(r => r.TotalAmount >= 10000),
-                    _ => filtered
-                };
+                var idList = ids.Split(',')
+                                .Select(int.Parse)
+                                .ToList();
+
+                receipts = receipts.Where(r => idList.Contains(r.Id));
             }
 
-            if (from.HasValue)
-                filtered = filtered.Where(r => r.Date >= from.Value);
-
-            if (to.HasValue)
-                filtered = filtered.Where(r => r.Date <= to.Value);
-
-            // ✅ Apply the remaining money filter
-            if (!string.IsNullOrEmpty(remaining) && remaining == "withRemaining")
-                filtered = filtered.Where(r => (r.TotalAmount - r.PaidAmount) > 0);
-
-            var list = filtered
+            var list = receipts
                 .OrderByDescending(r => r.Date)
                 .Select(r => new ReportReceiptVM
                 {
@@ -83,15 +61,11 @@ namespace B_B.PLL.Controllers
 
             var vm = new FilteredReportVM
             {
-                ClientName = client == "all" || string.IsNullOrEmpty(client) ? "جميع العملاء" : client,
-                FromDate = from,
-                ToDate = to,
-                AmountFilter = amount ?? "الكل",
                 Receipts = list,
                 TotalAmount = list.Sum(x => x.TotalAmount),
                 TotalRefund = list.Sum(x => x.RefundAmount),
                 TotalPaid = list.Sum(x => x.PaidAmount),
-                TotalRemaining = list.Sum(x => x.TotalAmount - x.PaidAmount)
+                TotalRemaining = list.Sum(x => x.Remaining)
             };
 
             return View("PrintFilteredReport", vm);

@@ -15,6 +15,7 @@ namespace B_B.BLL.ViewModels
         public string? SupplierName { get; set; }
         public string? ClientName { get; set; }
         public decimal Total { get; set; }
+        public decimal TotalCost { get; set; }
         public decimal PaidAmount { get; set; }
         public decimal RemainingAmount { get; set; }
         public decimal RefundAmount { get; set; }
@@ -33,6 +34,8 @@ namespace B_B.BLL.ViewModels
         public decimal RefundBeforeDiscount { get; set; }
         public decimal DiscountPercentage { get; set; }
         public decimal TotalAmount { get; set; } // after discount
+        public decimal TotalCost { get; set; } // after discount
+
         public decimal RefundAmount { get; set; } // after discount
         public decimal NetAmount => TotalAmount - RefundAmount;
     }

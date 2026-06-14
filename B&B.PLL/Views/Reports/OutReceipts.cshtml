@@ -5,7 +5,7 @@
     {
         selectedYear = DateTime.Now.Year.ToString();
     }
-    var years = Enumerable.Range(2020, DateTime.Now.Year - 2019).Reverse();
+    var years = Enumerable.Range(2020, DateTime.Now.Year - 2020 + 1).Reverse();
 }
 
 <div class="page-content active" dir="rtl" style="text-align:right;">
@@ -253,11 +253,15 @@
 @section Scripts {
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            console.log("DOM fully loaded");
+
             const rows = Array.from(document.querySelectorAll('#receiptsTable tbody tr:not(.totals-row)'));
+            console.log("Rows loaded:", rows.length);
+
             const searchInput = document.getElementById('searchInput');
             const clientFilter = document.getElementById('clientFilter');
             const amountFilter = document.getElementById('amountFilter');
-            const remainingFilter = document.getElementById('remainingFilter'); // ✅ New filter
+            const remainingFilter = document.getElementById('remainingFilter');
             const fromDate = document.getElementById('fromDate');
             const toDate = document.getElementById('toDate');
             const clearSearch = document.getElementById('clearSearch');
@@ -265,7 +269,6 @@
             const resetFilters = document.getElementById('resetFilters');
             const tableInfo = document.getElementById('tableInfo');
 
-            // Pagination elements
             const paginationContainer = document.getElementById('paginationContainer');
             const paginationInfo = document.getElementById('paginationInfo');
             const paginationNumbers = document.getElementById('paginationNumbers');
@@ -275,172 +278,173 @@
             const lastPageBtn = document.getElementById('lastPage');
             const pageSizeSelect = document.getElementById('pageSize');
 
-            // Pagination state
             let currentPage = 1;
             let pageSize = parseInt(pageSizeSelect.value);
             let totalPages = 1;
             let filteredRows = [];
 
-            // Set default date range (current month)
-            const today = new Date();
-            const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-            fromDate.value = firstDayOfMonth.toISOString().split('T')[0];
-            toDate.value = today.toISOString().split('T')[0];
+            fromDate.value = '';
+            toDate.value = '';
 
-            // Clear search
             clearSearch.addEventListener('click', function () {
+                console.log("Clear search clicked");
+                debugger;
                 searchInput.value = '';
                 filterTable();
             });
 
-            // Clear dates
             clearDates.addEventListener('click', function () {
+                console.log("Clear dates clicked");
+                debugger;
                 fromDate.value = '';
                 toDate.value = '';
                 filterTable();
             });
 
-            // Reset all filters
             resetFilters.addEventListener('click', function () {
+                console.log("Reset filters clicked");
+                debugger;
                 searchInput.value = '';
                 clientFilter.value = 'all';
                 amountFilter.value = 'all';
-                remainingFilter.value = 'all'; // ✅ Reset remaining filter
-                fromDate.value = firstDayOfMonth.toISOString().split('T')[0];
-                toDate.value = today.toISOString().split('T')[0];
+                remainingFilter.value = 'all';
                 currentPage = 1;
                 filterTable();
             });
 
-            // Page size change
             pageSizeSelect.addEventListener('change', function () {
+                console.log("Page size changed:", this.value);
+                debugger;
                 pageSize = parseInt(this.value);
                 currentPage = 1;
                 updatePagination();
             });
 
-            // Pagination button events
             firstPageBtn.addEventListener('click', () => goToPage(1));
             prevPageBtn.addEventListener('click', () => goToPage(currentPage - 1));
             nextPageBtn.addEventListener('click', () => goToPage(currentPage + 1));
             lastPageBtn.addEventListener('click', () => goToPage(totalPages));
 
-            // Trigger filters automatically
             clientFilter.addEventListener('change', filterTable);
             amountFilter.addEventListener('change', filterTable);
-            remainingFilter.addEventListener('change', filterTable); // ✅ New filter listener
+            remainingFilter.addEventListener('change', filterTable);
             fromDate.addEventListener('change', filterTable);
             toDate.addEventListener('change', filterTable);
 
-            // Search with debounce
             let searchTimeout;
             searchInput.addEventListener('input', function () {
+                console.log("Search input typing:", this.value);
                 clearTimeout(searchTimeout);
                 searchTimeout = setTimeout(filterTable, 300);
             });
 
-                    function filterTable() {
-            const searchTerm = searchInput.value.toLowerCase();
-            const selectedClient = clientFilter.value;
-            const selectedAmount = amountFilter.value;
-            const selectedRemaining = remainingFilter.value;
-            const fromDateValue = fromDate.value;
-            const toDateValue = toDate.value;
+            function filterTable() {
+                console.log("=== filterTable START ===");
+                debugger;
 
-            filteredRows = rows.filter(row => {
-                const clientName = row.getAttribute('data-client');
-                const amount = parseFloat(row.getAttribute('data-amount')) || 0;
-                const paid = parseFloat(row.cells[5].textContent.replace(/,/g, '')) || 0;
-                const remaining = amount - paid;
-                const rowDate = row.getAttribute('data-date');
-                const text = row.textContent.toLowerCase();
+                const searchTerm = searchInput.value.toLowerCase();
+                const selectedClient = clientFilter.value;
+                const selectedAmount = amountFilter.value;
+                const selectedRemaining = remainingFilter.value;
+                const fromDateValue = fromDate.value;
+                const toDateValue = toDate.value;
 
-                return (
-                    (!searchTerm || text.includes(searchTerm)) &&
-                    (selectedClient === 'all' || clientName === selectedClient) &&
-                    filterByAmount(remaining, selectedAmount) &&
-                    filterByDate(rowDate, fromDateValue, toDateValue) &&
-                    (selectedRemaining !== 'withRemaining' || remaining > 0)
-                );
-            });
+                console.log({ searchTerm, selectedClient, selectedAmount, selectedRemaining, fromDateValue, toDateValue });
 
-                            // Sorting
-        if (selectedAmount === 'sort-asc') {
-            filteredRows.sort((a, b) => {
-                const remainingA = parseFloat(a.getAttribute('data-remaining')) || 0;
-                const remainingB = parseFloat(b.getAttribute('data-remaining')) || 0;
-                return remainingA - remainingB;
-            });
-        } else if (selectedAmount === 'sort-desc') {
-            filteredRows.sort((a, b) => {
-                const remainingA = parseFloat(a.getAttribute('data-remaining')) || 0;
-                const remainingB = parseFloat(b.getAttribute('data-remaining')) || 0;
-                return remainingB - remainingA;
-            });
-        } else {
-            // Default sort by date descending
-            filteredRows.sort((a, b) => new Date(b.getAttribute('data-date')) - new Date(a.getAttribute('data-date')));
-        }
+                filteredRows = rows.filter((row, index) => {
+                    const clientName = row.getAttribute('data-client');
+                    const amount = parseFloat(row.getAttribute('data-amount')) || 0;
+                    const paid = parseFloat(row.cells[5].textContent.replace(/,/g, '')) || 0;
+                    const remaining = amount - paid;
+                    const rowDate = row.getAttribute('data-date');
+                    const text = row.textContent.toLowerCase();
 
+                    console.log(`Row ${index}`, { clientName, amount, paid, remaining, rowDate });
 
-            currentPage = 1;
-            updateTable();
-            updatePagination();
-            updateTotals();
-            updateTableInfo();
-        }
+                    const result =
+                        (!searchTerm || text.includes(searchTerm)) &&
+                        (selectedClient === 'all' || clientName === selectedClient) &&
+                        filterByAmount(remaining, selectedAmount) &&
+                        filterByDate(rowDate, fromDateValue, toDateValue) &&
+                        (selectedRemaining !== 'withRemaining' || remaining > 0);
 
-        function filterByAmount(remaining, type) {
-            if (type === 'all') return true;
-            if (type === '0-1000') return remaining < 1000;
-            if (type === '1000-5000') return remaining >= 1000 && remaining < 5000;
-            if (type === '5000-10000') return remaining >= 5000 && remaining < 10000;
-            if (type === '10000+') return remaining >= 10000;
-            // Sorting options do not filter
-            if (type === 'sort-asc' || type === 'sort-desc') return true;
-            return true;
-        }
+                    console.log(`Row ${index} result:`, result);
+                    return result;
+                });
+
+                console.log("Filtered rows count:", filteredRows.length);
+
+                filteredRows.sort((a, b) => new Date(b.getAttribute('data-date')) - new Date(a.getAttribute('data-date')));
+
+                currentPage = 1;
+                updateTable();
+                updatePagination();
+                updateTotals();
+                updateTableInfo();
+
+                console.log("=== filterTable END ===");
+            }
+
+            function filterByAmount(remaining, type) {
+                console.log("filterByAmount:", { remaining, type });
+                debugger;
+
+                if (type === 'all') return true;
+                if (type === '0-1000') return remaining < 1000;
+                if (type === '1000-5000') return remaining >= 1000 && remaining < 5000;
+                if (type === '5000-10000') return remaining >= 5000 && remaining < 10000;
+                if (type === '10000+') return remaining >= 10000;
+
+                return true;
+            }
 
             function filterByDate(rowDate, from, to) {
+                console.log("filterByDate:", { rowDate, from, to });
+                debugger;
+
                 if (!from && !to) return true;
+
                 const date = new Date(rowDate);
+
                 if (from && date < new Date(from)) return false;
+
                 if (to) {
                     const toD = new Date(to);
                     toD.setHours(23, 59, 59, 999);
                     if (date > toD) return false;
                 }
+
                 return true;
             }
 
             function updateTable() {
+                console.log("updateTable called");
+                debugger;
+
                 rows.forEach(row => row.style.display = 'none');
+
                 const startIndex = (currentPage - 1) * pageSize;
                 const endIndex = startIndex + pageSize;
+
                 const pageRows = filteredRows.slice(startIndex, endIndex);
                 pageRows.forEach(row => row.style.display = '');
             }
 
             function updatePagination() {
+                console.log("updatePagination called");
+                debugger;
+
                 totalPages = Math.ceil(filteredRows.length / pageSize);
+
                 const startItem = (currentPage - 1) * pageSize + 1;
                 const endItem = Math.min(currentPage * pageSize, filteredRows.length);
+
                 paginationInfo.textContent = `عرض ${startItem}-${endItem} من ${filteredRows.length}`;
 
-                firstPageBtn.disabled = currentPage === 1;
-                prevPageBtn.disabled = currentPage === 1;
-                nextPageBtn.disabled = currentPage === totalPages;
-                lastPageBtn.disabled = currentPage === totalPages;
-
                 paginationNumbers.innerHTML = '';
-                const maxPagesToShow = 5;
-                let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
-                let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
-                if (endPage - startPage + 1 < maxPagesToShow) startPage = Math.max(1, endPage - maxPagesToShow + 1);
 
-                for (let i = startPage; i <= endPage; i++) {
+                for (let i = 1; i <= totalPages; i++) {
                     const pageBtn = document.createElement('button');
-                    pageBtn.className = `page-number ${i === currentPage ? 'active' : ''}`;
                     pageBtn.textContent = i;
                     pageBtn.addEventListener('click', () => goToPage(i));
                     paginationNumbers.appendChild(pageBtn);
@@ -448,57 +452,61 @@
             }
 
             function goToPage(page) {
+                console.log("goToPage:", page);
+                debugger;
+
                 if (page < 1 || page > totalPages) return;
+
                 currentPage = page;
                 updateTable();
                 updatePagination();
             }
 
             function updateTotals() {
-                const getNumber = text => parseFloat(text.replace(/,/g, '')) || 0;
-                const totalAmount = filteredRows.reduce((sum, r) => sum + parseFloat(r.getAttribute('data-amount')) || 0, 0);
-                const totalRefund = filteredRows.reduce((sum, r) => sum + getNumber(r.cells[4].textContent), 0);
-                const totalPaid = filteredRows.reduce((sum, r) => sum + getNumber(r.cells[5].textContent), 0);
-                const totalRemaining = totalAmount - totalPaid;
+                console.log("updateTotals called");
+                debugger;
 
-                document.getElementById('totalAmount').textContent = totalAmount.toLocaleString('ar-EG', { minimumFractionDigits: 2 });
-                document.getElementById('totalRefund').textContent = totalRefund.toLocaleString('ar-EG', { minimumFractionDigits: 2 });
-                document.getElementById('totalPaid').textContent = totalPaid.toLocaleString('ar-EG', { minimumFractionDigits: 2 });
-                document.getElementById('totalRemaining').textContent = totalRemaining.toLocaleString('ar-EG', { minimumFractionDigits: 2 });
+                const getNumber = text => parseFloat(text.replace(/,/g, '')) || 0;
+
+                const totalAmount = filteredRows.reduce((sum, r) => sum + parseFloat(r.getAttribute('data-amount')) || 0, 0);
+                const totalPaid = filteredRows.reduce((sum, r) => sum + getNumber(r.cells[5].textContent), 0);
+
+                console.log({ totalAmount, totalPaid });
             }
 
             function updateTableInfo() {
+                console.log("updateTableInfo called");
+                debugger;
+
                 const total = rows.length;
                 const filtered = filteredRows.length;
+
                 if (filtered === total)
                     tableInfo.textContent = `عرض جميع ${total} إيصال`;
                 else
                     tableInfo.textContent = `عرض ${filtered} من أصل ${total} إيصال`;
             }
 
+            // ✅ FIXED PRINT BUTTON
             document.getElementById('printFilteredReport').addEventListener('click', function () {
-                const client = clientFilter.value;
-                const amount = amountFilter.value;
-                const remaining = remainingFilter.value; // ✅ Pass remaining filter
-                const from = fromDate.value;
-                const to = toDate.value;
+                console.log("Print clicked");
+                debugger;
+
+                const ids = filteredRows.map(row => row.cells[0].textContent.trim());
+
+                if (ids.length === 0) {
+                    alert("لا يوجد بيانات للطباعة");
+                    return;
+                }
 
                 const url = new URL('@Url.Action("PrintFilteredReport", "Reports")', window.location.origin);
-                if (client) url.searchParams.append('client', client);
-                if (amount) url.searchParams.append('amount', amount);
-                if (remaining) url.searchParams.append('remaining', remaining); // ✅ Add remaining to query
-                if (from) url.searchParams.append('from', from);
-                if (to) url.searchParams.append('to', to);
+                url.searchParams.append('ids', ids.join(','));
+
+                console.log("IDs:", ids);
 
                 window.open(url, '_blank');
             });
 
-            // Server-side year filter
-            window.applyYearFilter = function () {
-                document.getElementById('year').form?.submit();
-            };
-
-            // Initialize
             filterTable();
         });
     </script>

@@ -5,32 +5,38 @@
     var allReceipts = Model.Receipts.ToList();
     var receiptCount = allReceipts.Count;
 
-    // Pagination settings
-    var pageSize = 200; // Show 100 receipts per page
+    var pageSize = 200;
+
     var currentPage = Context.Request.Query["page"].ToString() != "" ?
         int.Parse(Context.Request.Query["page"].ToString()) : 1;
+
+    var isPrint = Context.Request.Query["print"] == "true";
+
+    var receiptsToShow = isPrint
+        ? allReceipts.OrderByDescending(r => r.Date).ToList()
+        : allReceipts.OrderByDescending(r => r.Date)
+            .Skip((currentPage - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+
     var totalPages = (int)Math.Ceiling((double)allReceipts.Count / pageSize);
 
-    // Get receipts for current page
-    var pagedReceipts = allReceipts
-        .OrderByDescending(r => r.Date)
-        .Skip((currentPage - 1) * pageSize)
-        .Take(pageSize)
-        .ToList();
-
-    // Calculate totals
-    var pageTotalAmount = pagedReceipts.Sum(r => r.TotalAmount);
-    var pageRefundAmount = pagedReceipts.Sum(r => r.RefundAmount);
-    var pagePaidAmount = pagedReceipts.Sum(r => r.PaidAmount);
-    var pageRemainingAmount = pagedReceipts.Sum(r => r.Remaining);
+    var pageTotalAmount = receiptsToShow.Sum(r => r.TotalAmount);
+    var pageRefundAmount = receiptsToShow.Sum(r => r.RefundAmount);
+    var pagePaidAmount = receiptsToShow.Sum(r => r.PaidAmount);
+    var pageRemainingAmount = receiptsToShow.Sum(r => r.Remaining);
     var isRemainingOverdue = pageRemainingAmount > 0;
 }
+
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="utf-8" />
     <title>تقرير الإيصالات - B&B</title>
     <style>
+        .receipt-table td:first-child {
+            white-space: normal;
+        }
         /* Ultra Compact Table Styles */
         * {
             margin: 0;
@@ -43,10 +49,11 @@
             direction: rtl;
             text-align: right;
             background: white;
-            color: #000;
+            color: #000 !important; /* Force black text */
             line-height: 1.2;
             padding: 5mm;
             font-size: 9pt;
+            font-weight: bold !important; /* Make all text bold */
         }
 
         /* Main Receipts Table */
@@ -58,35 +65,37 @@
             page-break-inside: auto;
         }
 
-        /* BOLD BLACK TABLE HEADER */
-        .receipts-table th {
-            background-color: #000 !important;
-            color: white !important;
-            padding: 1.2mm 0.8mm;
-            font-weight: 900 !important;
-            text-align: center;
-            border: 1.5px solid #000 !important;
-            font-size: 8pt;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-            font-family: 'Arial Black', 'Segoe UI Black', sans-serif;
-        }
+            /* BOLD BLACK TABLE HEADER */
+            .receipts-table th {
+                background-color: #000 !important;
+                color: white !important;
+                padding: 1.2mm 0.8mm;
+                font-weight: 900 !important;
+                text-align: center;
+                border: 1.5px solid #000 !important;
+                font-size: 8pt;
+                text-transform: uppercase;
+                letter-spacing: 0.3px;
+                font-family: 'Arial Black', 'Segoe UI Black', sans-serif;
+            }
 
-        .receipts-table td {
-            padding: 0.8mm 0.5mm;
-            border: 0.3px solid #ccc;
-            text-align: center;
-            vertical-align: middle;
-        }
+            .receipts-table td {
+                padding: 0.8mm 0.5mm;
+                border: 1px solid #000 !important; /* Thicker black borders */
+                text-align: center;
+                vertical-align: middle;
+                font-weight: bold !important; /* Make all cell content bold */
+                color: #000 !important; /* Force black text */
+            }
 
-        /* Zebra striping for better readability */
-        .receipts-table tr:nth-child(even) {
-            background: #f8fafc;
-        }
+            /* Zebra striping with more contrast */
+            .receipts-table tr:nth-child(even) {
+                background: #f0f0f0 !important;
+            }
 
-        .receipts-table tr:hover {
-            background: #f1f5f9;
-        }
+            .receipts-table tr:hover {
+                background: #e0e0e0 !important;
+            }
 
         /* Sticky header on screen */
         @@media screen {
@@ -103,20 +112,20 @@
             position: fixed;
             top: 10px;
             left: 10px;
-            background: #2563eb;
-            color: white;
-            border: none;
+            background: #000 !important; /* Black button */
+            color: white !important;
+            border: 2px solid #000 !important;
             padding: 8px 16px;
             border-radius: 4px;
-            font-weight: bold;
+            font-weight: 900 !important;
             cursor: pointer;
             z-index: 1000;
             font-size: 10pt;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
         }
 
             .print-button:hover {
-                background: #1d4ed8;
+                background: #333 !important;
             }
 
         /* Pagination */
@@ -128,37 +137,40 @@
             margin: 3mm 0;
             padding: 2mm;
             font-size: 9pt;
-            background: #f8fafc;
+            background: #f0f0f0 !important;
+            border: 1px solid #000 !important;
             border-radius: 4px;
+            font-weight: bold !important;
         }
 
         .page-btn {
             padding: 1mm 2mm;
-            border: 0.5px solid #ccc;
-            background: white;
-            color: #333;
+            border: 1px solid #000 !important;
+            background: white !important;
+            color: #000 !important;
             text-decoration: none;
             border-radius: 2px;
             font-size: 8pt;
+            font-weight: bold !important;
             transition: all 0.2s;
         }
 
             .page-btn:hover {
-                background: #2563eb;
-                color: white;
-                border-color: #2563eb;
+                background: #000 !important;
+                color: white !important;
+                border-color: #000 !important;
             }
 
         .page-info {
-            color: #666;
-            font-weight: bold;
+            color: #000 !important;
+            font-weight: 900 !important;
             margin: 0 2mm;
         }
 
-        /* Page Header */
+        /* Page Header - SMALLER IN PRINT */
         .page-header {
             text-align: center;
-            border-bottom: 2px solid #000;
+            border-bottom: 3px solid #000 !important;
             padding-bottom: 2mm;
             margin-bottom: 3mm;
             background: white;
@@ -167,24 +179,27 @@
 
         .page-title {
             font-size: 16pt;
-            font-weight: bold;
-            color: #000;
+            font-weight: 900 !important;
+            color: #000 !important;
             margin-bottom: 1mm;
         }
 
         .page-subtitle {
             font-size: 10pt;
-            color: #666;
+            color: #000 !important;
+            font-weight: bold !important;
         }
 
-        /* Page Totals - FIXED TO ALWAYS SHOW */
+        /* Page Totals - BOLD BLACK */
         .page-totals {
-            background: #f8f9fa;
+            background: #f0f0f0 !important;
             padding: 3mm;
             margin: 3mm 0;
             border-radius: 4px;
-            border: 2px solid #000;
+            border: 3px solid #000 !important;
             font-size: 10pt;
+            font-weight: bold !important;
+            color: #000 !important;
             page-break-before: avoid;
             page-break-inside: avoid;
             page-break-after: avoid;
@@ -197,44 +212,69 @@
             justify-content: space-between !important;
             margin-bottom: 1.5mm !important;
             padding: 1mm 0 !important;
-            border-bottom: 0.5px dashed #ccc !important;
+            border-bottom: 1px solid #000 !important;
             visibility: visible !important;
             opacity: 1 !important;
+            font-weight: bold !important;
+            color: #000 !important;
         }
 
             .total-row:last-child {
-                border-top: 2px solid #000 !important;
+                border-top: 3px solid #000 !important;
                 border-bottom: none !important;
-                font-weight: bold !important;
+                font-weight: 900 !important;
                 margin-top: 2mm !important;
                 padding-top: 2mm !important;
                 font-size: 11pt !important;
                 color: #000 !important;
+                background: #e0e0e0 !important;
             }
 
-        /* Status Indicators */
+        /* Status Indicators - BOLD BLACK */
         .status-paid {
-            color: #059669 !important;
-            font-weight: bold !important;
+            color: #000 !important;
+            font-weight: 900 !important;
             padding: 0.5mm 1mm !important;
             border-radius: 2px !important;
+            background: #d0d0d0 !important;
         }
 
         .status-overdue {
-            color: #dc2626 !important;
-            font-weight: bold !important;
+            color: #000 !important;
+            font-weight: 900 !important;
             padding: 0.5mm 1mm !important;
             border-radius: 2px !important;
+            background: #d0d0d0 !important;
         }
 
         .status-pending {
-            color: #d97706 !important;
-            font-weight: bold !important;
+            color: #000 !important;
+            font-weight: 900 !important;
             padding: 0.5mm 1mm !important;
             border-radius: 2px !important;
+            background: #d0d0d0 !important;
         }
 
-     /* Print Styles - Optimized for maximum density */
+        /* Badge for counts */
+        .count-badge {
+            background: #000 !important;
+            color: white !important;
+            padding: 0.5mm 1.5mm;
+            border-radius: 10px;
+            font-size: 7pt;
+            font-weight: 900 !important;
+            margin-right: 1mm;
+            border: 1px solid #000 !important;
+        }
+
+        /* Currency formatting - BOLD BLACK */
+        .currency {
+            font-family: 'Courier New', monospace;
+            font-weight: 900 !important;
+            color: #000 !important;
+        }
+
+        /* Print Styles - HIDE TOP MENU, KEEP SMALLER HEADER, BOLD BLACK EVERYTHING */
         @@media print {
             @@page {
                 size: A4;
@@ -243,17 +283,71 @@
 
             body {
                 padding: 0;
-                background: white;
+                background: white !important;
                 font-size: 7pt;
-                -webkit-print-color-adjust: exact;
-                color-adjust: exact;
+                -webkit-print-color-adjust: exact !important;
+                color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color: #000 !important;
+                font-weight: bold !important;
+            }
+            /* HIDE TOP NAVIGATION/BAR/MENU */
+            .top-bar,
+            nav,
+            .navbar,
+            .navigation,
+            .menu,
+            header:not(.page-header),
+            .admin-header,
+            .main-header,
+            .site-header {
+                display: none !important;
+                visibility: hidden !important;
+                height: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                border: none !important;
+            }
+            /* HIDE PRINT BUTTON */
+            .print-button {
+                display: none !important;
+            }
+            /* HIDE PAGINATION */
+            .pagination {
+                display: none !important;
+            }
+            /* KEEP PAGE HEADER BUT MAKE IT SMALLER */
+            .page-header {
+                display: block !important;
+                visibility: visible !important;
+                padding: 1mm 0 1mm 0 !important;
+                margin-bottom: 2mm !important;
+                border-bottom: 2px solid #000 !important;
+                font-size: 8pt !important;
             }
 
+            .page-title {
+                font-size: 10pt !important;
+                font-weight: 900 !important;
+                color: #000 !important;
+                margin-bottom: 0.5mm !important;
+            }
+
+            .page-subtitle {
+                font-size: 7pt !important;
+                color: #000 !important;
+                font-weight: bold !important;
+            }
+
+            .count-badge {
+                font-size: 5pt !important;
+                padding: 0.3mm 1mm !important;
+            }
             /* BOLD BLACK HEADER FOR PRINTING */
             .receipts-table th {
                 background-color: #000000 !important;
                 color: #FFFFFF !important;
-                border: 1.5px solid #000000 !important;
+                border: 2px solid #000000 !important;
                 -webkit-print-color-adjust: exact !important;
                 color-adjust: exact !important;
                 print-color-adjust: exact !important;
@@ -262,59 +356,34 @@
                 font-size: 7pt;
             }
 
-            /* Hide buttons, pagination, and top menu */
-            .print-button,
-            .pagination,
-            .top-bar,
-            nav,
-            .navbar {
-                display: none !important;
-            }
-
-            /* Page header */
-            .page-header {
-                margin-bottom: 2mm;
-                padding-bottom: 1mm;
-                border-bottom: 2px solid #000;
-            }
-
-            .page-title {
-                font-size: 14pt;
-                color: #000;
-            }
-
-            .page-subtitle {
-                font-size: 8pt;
-            }
-
             .receipts-table {
                 font-size: 6pt;
                 page-break-inside: auto;
+                margin-top: 1mm !important; /* Smaller margin since header is smaller */
             }
 
-            .receipts-table th {
-                padding: 0.8mm 0.3mm;
-                font-size: 6.5pt;
-                font-weight: 900;
-            }
+                .receipts-table th {
+                    padding: 0.8mm 0.3mm;
+                    font-size: 6.5pt;
+                    font-weight: 900;
+                }
 
-            .receipts-table td {
-                padding: 0.6mm 0.3mm;
-                border: 0.2px solid #999;
-            }
-
-            /* Ensure table rows don't break across pages */
-            .receipts-table tr {
-                page-break-inside: avoid;
-                page-break-after: auto;
-            }
-
-            /* Ensure header repeats on each printed page */
-            .receipts-table thead {
-                display: table-header-group;
-            }
-
-            /* TOTALS SECTION - Ensured to print ALL rows */
+                .receipts-table td {
+                    padding: 0.6mm 0.3mm;
+                    border: 1px solid #000 !important;
+                    font-weight: bold !important;
+                    color: #000 !important;
+                }
+                /* Ensure table rows don't break across pages */
+                .receipts-table tr {
+                    page-break-inside: auto;
+                    page-break-after: auto;
+                }
+                /* Ensure header repeats on each printed page */
+                .receipts-table thead {
+                    display: table-header-group;
+                }
+            /* TOTALS SECTION - BOLD BLACK */
             .page-totals {
                 display: block !important;
                 visibility: visible !important;
@@ -323,12 +392,14 @@
                 page-break-before: avoid !important;
                 page-break-inside: avoid !important;
                 page-break-after: avoid !important;
-                background: #f8f9fa !important;
-                border: 2px solid #000 !important;
-                margin-top: 3mm !important;
+                background: #f0f0f0 !important;
+                border: 3px solid #000 !important;
+                margin-top: 2mm !important;
                 margin-bottom: 0 !important;
                 padding: 2mm !important;
                 font-size: 8pt !important;
+                font-weight: bold !important;
+                color: #000 !important;
                 -webkit-print-color-adjust: exact !important;
                 color-adjust: exact !important;
                 print-color-adjust: exact !important;
@@ -336,69 +407,57 @@
                 overflow: visible !important;
             }
 
-            /* FIX: FLEX BROKEN IN PRINT → Use block! */
-                    .total-row {
-                        display: flex !important;
-                        justify-content: space-between !important;
-                        visibility: visible !important;
-                        opacity: 1 !important;
-                        margin-bottom: 1.5mm !important;
-                        padding: 1mm 0 !important;
-                        border-bottom: 0.5px dashed #ccc !important;
-                    }
-                        /* Children inside total row */
-            .total-row span {
-                display: inline-block !important;
-                width: auto !important;
-                max-width: 100% !important;
+            .total-row {
+                display: flex !important;
+                justify-content: space-between !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                margin-bottom: 1.5mm !important;
+                padding: 1mm 0 !important;
+                border-bottom: 1px solid #000 !important;
+                font-weight: bold !important;
+                color: #000 !important;
             }
 
-            /* Remaining Total (إجمالي المتبقي) — force print */
-                    /* Remaining Total (إجمالي المتبقي) — force print */
-                    .remaining-total {
-                        page-break-inside: avoid !important;
-                        page-break-before: avoid !important;
-                        page-break-after: avoid !important;
-                        display: flex !important; /* Changed from block to flex */
-                        visibility: visible !important;
-                        opacity: 1 !important;
-                        font-weight: bold !important;
-                    }
-                    /* Ensure last total row prints */
-                    .total-row:last-child {
-                        display: flex !important;
-                        visibility: visible !important;
-                        opacity: 1 !important;
-                        border-top: 2px solid #000 !important;
-                        border-bottom: none !important;
-                        font-weight: bold !important;
-                        margin-top: 2mm !important;
-                        padding-top: 2mm !important;
-                        font-size: 9pt !important;
-                        color: #000 !important;
-                    }
-            /* Nuclear option: Force print of ALL totals */
-            body::after {
-                content: "" !important;
-                display: none !important;
-            }
-        }
-                    /* Ensure status colors print */
+                .total-row:last-child {
+                    display: flex !important;
+                    visibility: visible !important;
+                    opacity: 1 !important;
+                    border-top: 3px solid #000 !important;
+                    border-bottom: none !important;
+                    font-weight: 900 !important;
+                    margin-top: 2mm !important;
+                    padding-top: 2mm !important;
+                    font-size: 9pt !important;
+                    color: #000 !important;
+                    background: #e0e0e0 !important;
+                }
+            /* Status indicators - BOLD BLACK */
             .status-paid,
             .status-overdue,
             .status-pending {
                 -webkit-print-color-adjust: exact !important;
                 color-adjust: exact !important;
                 print-color-adjust: exact !important;
+                color: #000 !important;
+                font-weight: 900 !important;
+                background: #d0d0d0 !important;
+            }
+            /* Currency - BOLD BLACK */
+            .currency {
+                font-family: 'Courier New', monospace !important;
+                font-weight: 900 !important;
+                color: #000 !important;
             }
         }
-
 
         /* Responsive table for very small screens */
         @@media (max-width: 768px) {
             body {
                 padding: 2mm;
                 font-size: 8pt;
+                font-weight: bold !important;
+                color: #000 !important;
             }
 
             .receipts-table {
@@ -409,24 +468,6 @@
                 .receipts-table td {
                     padding: 0.6mm 0.3mm;
                 }
-        }
-
-        /* Badge for counts */
-        .count-badge {
-            background: #000;
-            color: white;
-            padding: 0.5mm 1.5mm;
-            border-radius: 10px;
-            font-size: 7pt;
-            font-weight: bold;
-            margin-right: 1mm;
-        }
-
-        /* Currency formatting */
-        .currency {
-            font-family: 'Courier New', monospace;
-            font-weight: bold;
-            color: #000;
         }
 
         /* Header cell class for extra boldness */
@@ -449,13 +490,17 @@
             opacity: 1 !important;
             height: auto !important;
             overflow: visible !important;
+            font-weight: bold !important;
+            color: #000 !important;
         }
-        
+
         /* Make sure remaining total is visible */
         .remaining-total {
             display: flex !important;
             visibility: visible !important;
             opacity: 1 !important;
+            font-weight: bold !important;
+            color: #000 !important;
         }
     </style>
 </head>
@@ -464,15 +509,16 @@
         🖨️ طباعة التقرير
     </button>
 
+    <!-- Page Header - SMALLER IN PRINT, HIDDEN TOP MENU -->
     <div class="page-header">
         <div class="page-title">B&B - تقرير الإيصالات</div>
         <div class="page-subtitle">
-            <span class="count-badge">@pagedReceipts.Count إيصال</span>
+            <span class="count-badge">@receiptsToShow.Count إيصال</span>
             الصفحة @currentPage من @totalPages - تاريخ التقرير: @DateTime.Now.ToString("yyyy/MM/dd")
         </div>
     </div>
 
-    <!-- Pagination -->
+    <!-- Pagination - HIDDEN IN PRINT -->
     @if (totalPages > 1)
     {
         <div class="pagination">
@@ -519,9 +565,9 @@
             </tr>
         </thead>
         <tbody>
-            @for (int i = 0; i < pagedReceipts.Count; i++)
+            @for (int i = 0; i < receiptsToShow.Count; i++)
             {
-                var receipt = pagedReceipts[i];
+                var receipt = receiptsToShow[i];
                 var rowNumber = ((currentPage - 1) * pageSize) + i + 1;
                 var statusClass = receipt.Remaining == 0 ? "status-paid" :
                 receipt.Remaining > 0 ? "status-overdue" : "status-pending";
@@ -529,31 +575,31 @@
                 receipt.Remaining > 0 ? "متبقي" : "مرتجع";
 
                 <tr>
-                    <td>@rowNumber</td>
+                    <td><strong>@rowNumber</strong></td>
                     <td><strong>@receipt.Id</strong></td>
-                    <td>@receipt.PartyName</td>
-                    <td>@receipt.Date.ToString("yyyy/MM/dd")</td>
-                    <td class="currency">@receipt.TotalAmount.ToString("N0")</td>
-                    <td class="currency">@receipt.RefundAmount.ToString("N0")</td>
-                    <td class="currency">@receipt.PaidAmount.ToString("N0")</td>
+                    <td><strong>@receipt.PartyName</strong></td>
+                    <td><strong>@receipt.Date.ToString("yyyy/MM/dd")</strong></td>
+                    <td class="currency"><strong>@receipt.TotalAmount.ToString("N0")</strong></td>
+                    <td class="currency"><strong>@receipt.RefundAmount.ToString("N0")</strong></td>
+                    <td class="currency"><strong>@receipt.PaidAmount.ToString("N0")</strong></td>
                     <td class="currency">
-                        <span class="@statusClass">@receipt.Remaining.ToString("N0")</span>
+                        <span class="@statusClass"><strong>@receipt.Remaining.ToString("N0")</strong></span>
                     </td>
                     <td>
-                        <span class="@statusClass">@statusText</span>
+                        <span class="@statusClass"><strong>@statusText</strong></span>
                     </td>
                     <td>
                         @if (receipt.RefundAmount > 0)
                         {
-                            <span style="color: #d97706;">مرتجع</span>
+                            <span class="status-paid"><strong>مرتجع</strong></span>
                         }
                         else if (receipt.Remaining == 0)
                         {
-                            <span style="color: #059669;">مكتمل</span>
+                            <span class="status-paid"><strong>مكتمل</strong></span>
                         }
                         else
                         {
-                            <span style="color: #6b7280;">-</span>
+                            <span class="status-overdue"><strong>-</strong></span>
                         }
                     </td>
                 </tr>
@@ -561,7 +607,7 @@
         </tbody>
     </table>
 
-    <!-- Pagination -->
+    <!-- Pagination - HIDDEN IN PRINT -->
     @if (totalPages > 1)
     {
         <div class="pagination">
@@ -594,214 +640,41 @@
     <!-- Page Totals - ALL ROWS INCLUDING REMAINING -->
     <div class="page-totals force-print" style="display: block; visibility: visible;">
         <div class="total-row">
-            <span>إجمالي الإيصالات في الصفحة:</span>
-            <span><strong>@pagedReceipts.Count إيصال</strong></span>
+            <span><strong>إجمالي الإيصالات في الصفحة:</strong></span>
+            <span class="currency"><strong>@receiptsToShow.Count إيصال</strong></span>
         </div>
         <div class="total-row">
-            <span>إجمالي المبالغ:</span>
-            <span class="currency">@pageTotalAmount.ToString("N0") ج.م</span>
+            <span><strong>إجمالي المبالغ:</strong></span>
+            <span class="currency"><strong>@pageTotalAmount.ToString("N0") ج.م</strong></span>
         </div>
         <div class="total-row">
-            <span>إجمالي المرتجعات:</span>
-            <span class="currency">@pageRefundAmount.ToString("N0") ج.م</span>
+            <span><strong>إجمالي المرتجعات:</strong></span>
+            <span class="currency"><strong>@pageRefundAmount.ToString("N0") ج.م</strong></span>
         </div>
         <div class="total-row">
-            <span>إجمالي المدفوع:</span>
-            <span class="currency">@pagePaidAmount.ToString("N0") ج.م</span>
+            <span><strong>إجمالي المدفوع:</strong></span>
+            <span class="currency"><strong>@pagePaidAmount.ToString("N0") ج.م</strong></span>
         </div>
         <div class="total-row remaining-total" style="display: flex; visibility: visible; opacity: 1;">
             <span><strong>إجمالي المتبقي:</strong></span>
-            <span class="currency @(isRemainingOverdue ? "status-overdue" : "status-paid")" style="font-weight: bold;">
-                @pageRemainingAmount.ToString("N0") ج.م
+            <span class="currency @(isRemainingOverdue ? "status-overdue" : "status-paid")" style="font-weight: 900;">
+                <strong>@pageRemainingAmount.ToString("N0") ج.م</strong>
             </span>
         </div>
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Add keyboard shortcut for printing (Ctrl+P)
-            document.addEventListener('keydown', function(e) {
-                if (e.ctrlKey && e.key === 'p') {
+        document.addEventListener('DOMContentLoaded', function () {
+
+            // Print shortcut (optional)
+            document.addEventListener('keydown', function (e) {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
                     e.preventDefault();
                     window.print();
                 }
             });
 
-            // Force black header for printing
-            window.addEventListener('beforeprint', function() {
-                // Ensure all headers are black
-                const headers = document.querySelectorAll('.receipts-table th');
-                headers.forEach(header => {
-                    header.style.backgroundColor = '#000000';
-                    header.style.color = '#FFFFFF';
-                    header.style.fontWeight = '900';
-                    header.style.border = '1.5px solid #000000';
-                });
-                
-                // Force ALL totals rows to be visible
-                const totalsSection = document.querySelector('.page-totals');
-                if (totalsSection) {
-                    totalsSection.style.display = 'block';
-                    totalsSection.style.visibility = 'visible';
-                    totalsSection.style.opacity = '1';
-                    totalsSection.style.position = 'relative';
-                    totalsSection.style.height = 'auto';
-                    totalsSection.style.overflow = 'visible';
-                }
-                
-                // Force all total rows to be visible
-                const totalRows = document.querySelectorAll('.total-row');
-                totalRows.forEach(row => {
-                    row.style.display = 'flex';
-                    row.style.visibility = 'visible';
-                    row.style.opacity = '1';
-                    row.style.justifyContent = 'space-between';
-                });
-            });
-                    // Specifically ensure remaining total prints
-               // Nuclear option: If totals still don't show, clone them to body
-        function ensureAllTotalsPrint() {
-            const totalsSection = document.querySelector('.page-totals');
-            if (totalsSection) {
-                // Check if totals are visible in DOM
-                const rect = totalsSection.getBoundingClientRect();
-                if (rect.height === 0) {
-                    // Clone and append to body as fallback - BUT REMOVE OLD ONE FIRST
-                    const existingFallback = document.querySelector('.print-totals-fallback');
-                    if (existingFallback) {
-                        existingFallback.remove();
-                    }
-
-                    const clonedTotals = totalsSection.cloneNode(true);
-                    clonedTotals.className = 'page-totals print-totals-fallback';
-                    clonedTotals.style.cssText = `
-                        display: block !important;
-                        visibility: visible !important;
-                        opacity: 1 !important;
-                        position: relative !important;
-                        background: #f8f9fa !important;
-                        border: 2px solid #000 !important;
-                        padding: 3mm !important;
-                        margin: 3mm 0 !important;
-                        page-break-before: avoid !important;
-                        width: 100% !important;
-                        clear: both !important;
-                    `;
-
-                    // Insert it in the proper location (after the last pagination or table)
-                    const lastPagination = document.querySelector('.pagination:last-of-type');
-                    if (lastPagination) {
-                        lastPagination.parentNode.insertBefore(clonedTotals, lastPagination.nextSibling);
-                    } else {
-                        const table = document.querySelector('.receipts-table');
-                        if (table) {
-                            table.parentNode.insertBefore(clonedTotals, table.nextSibling);
-                        } else {
-                            document.body.appendChild(clonedTotals);
-                        }
-                    }
-                }
-            }
-        }
-
-        // Add to event listeners
-        window.addEventListener('beforeprint', ensureRemainingTotalPrints);
-            // Add CSS to ensure black background prints
-            const printStyle = document.createElement('style');
-            printStyle.textContent = `
-                @@media print {
-                    .receipts-table th {
-                        background-color: #000000 !important;
-                        color: #FFFFFF !important;
-                        border: 1.5px solid #000000 !important;
-                        -webkit-print-color-adjust: exact !important;
-                        color-adjust: exact !important;
-                        print-color-adjust: exact !important;
-                    }
-                    .receipts-table thead tr {
-                        background-color: #000000 !important;
-                        -webkit-print-color-adjust: exact !important;
-                        color-adjust: exact !important;
-                    }
-                    
-                    .page-totals {
-                        display: block !important;
-                        visibility: visible !important;
-                        opacity: 1 !important;
-                        position: relative !important;
-                        page-break-before: avoid !important;
-                        page-break-inside: avoid !important;
-                        page-break-after: avoid !important;
-                        background: #f8f9fa !important;
-                        border: 2px solid #000 !important;
-                        -webkit-print-color-adjust: exact !important;
-                        color-adjust: exact !important;
-                        print-color-adjust: exact !important;
-                        height: auto !important;
-                        overflow: visible !important;
-                    }
-                    
-                    .total-row {
-                        display: flex !important;
-                        visibility: visible !important;
-                        opacity: 1 !important;
-                        justify-content: space-between !important;
-                        margin-bottom: 1.5mm !important;
-                        padding: 1mm 0 !important;
-                        border-bottom: 0.5px dashed #ccc !important;
-                    }
-                    
-                    .remaining-total {
-                        display: flex !important;
-                        visibility: visible !important;
-                        opacity: 1 !important;
-                    }
-                    
-                    .status-paid,
-                    .status-overdue,
-                    .status-pending {
-                        -webkit-print-color-adjust: exact !important;
-                        color-adjust: exact !important;
-                        print-color-adjust: exact !important;
-                    }
-                    
-                    .currency {
-                        font-family: 'Courier New', monospace !important;
-                        font-weight: bold !important;
-                        color: #000 !important;
-                    }
-                }
-            `;
-            document.head.appendChild(printStyle);
         });
-
-        // Nuclear option: If totals still don't show, clone them to body
-        function ensureAllTotalsPrint() {
-            const totalsSection = document.querySelector('.page-totals');
-            if (totalsSection) {
-                // Check if totals are visible in DOM
-                const rect = totalsSection.getBoundingClientRect();
-                if (rect.height === 0) {
-                    // Clone and append to body as fallback
-                    const clonedTotals = totalsSection.cloneNode(true);
-                    clonedTotals.style.cssText = `
-                        display: block !important;
-                        visibility: visible !important;
-                        opacity: 1 !important;
-                        position: relative !important;
-                        background: #f8f9fa !important;
-                        border: 2px solid #000 !important;
-                        padding: 3mm !important;
-                        margin: 3mm 0 !important;
-                        page-break-before: avoid !important;
-                    `;
-                    document.body.appendChild(clonedTotals);
-                }
-            }
-        }
-
-        window.addEventListener('load', ensureAllTotalsPrint);
-        window.addEventListener('beforeprint', ensureAllTotalsPrint);
     </script>
 </body>
 </html>

@@ -170,28 +170,23 @@ namespace B_B.BLL.Service.Implementation
 
             int rowCount = worksheet.Dimension.Rows;
 
-            // Get all existing products
             var existingProducts = (await _productRepo.GetAllAsync()).ToList();
 
-            for (int row = 2; row <= rowCount; row++) // skip header
+            for (int row = 2; row <= rowCount; row++)
             {
                 var name = worksheet.Cells[row, 1].Text?.Trim();
                 if (string.IsNullOrWhiteSpace(name)) continue;
 
-                // Parse numeric values
                 decimal sellingPrice = ParseDecimal(worksheet.Cells[row, 2].Text);
                 decimal cost = ParseDecimal(worksheet.Cells[row, 3].Text);
-                Decimal initialStock = ParseDecimal(worksheet.Cells[row, 4].Text);
 
-                // Find existing product
-                var product = existingProducts.FirstOrDefault(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+                var product = existingProducts
+                    .FirstOrDefault(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+
                 if (product != null)
                 {
                     product.SellingPrice = sellingPrice;
                     product.Cost = cost;
-
-                    if (initialStock > 0)
-                        product.InitialStock = initialStock;
 
                     _productRepo.Update(product);
                 }
@@ -199,6 +194,7 @@ namespace B_B.BLL.Service.Implementation
 
             await _productRepo.SaveAsync();
         }
+
 
         // -------------------- Helpers --------------------
         private decimal ParseDecimal(string text)

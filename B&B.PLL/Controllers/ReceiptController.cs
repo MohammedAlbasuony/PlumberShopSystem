@@ -372,6 +372,8 @@ namespace B_B.PLL.Controllers
 
                 Total = receipt.ReceiptDetails.Sum(d =>
                     (d.UnitPrice * (d.Quantity - d.RefundQuantity)) * (1 - (d.DiscountPercentage / 100m))),
+                TotalCost = receipt.ReceiptDetails.Sum(d =>
+                    (d.Product.Cost * (d.Quantity - d.RefundQuantity))),
 
                 PaidAmount = receipt.PaidAmount,
                 RefundAmount = receipt.ReceiptDetails.Sum(d =>
@@ -388,6 +390,7 @@ namespace B_B.PLL.Controllers
                     Quantity = d.Quantity,
                     UnitPrice = d.UnitPrice,
                     RefundQuantity = d.RefundQuantity,
+                    Cost = d.Product.Cost,
                     DiscountPercentage = d.DiscountPercentage
                 }).ToList()
             };
@@ -418,7 +421,9 @@ namespace B_B.PLL.Controllers
 
                 // ✅ after discount
                 TotalAmount = g.Sum(d => (d.UnitPrice * d.Quantity) * (1 - (d.DiscountPercentage / 100m))),
+                TotalCost = g.Sum(d => (d.Product.Cost * d.Quantity)),
                 RefundAmount = g.Sum(d => (d.UnitPrice * d.RefundQuantity) * (1 - (d.DiscountPercentage / 100m)))
+
             })
             .ToList();
 

@@ -6,6 +6,9 @@
     <meta charset="utf-8" />
     <title>إيصال الصرف - B&B</title>
     <style>
+        .receipt-table td:first-child {
+            white-space: normal;
+        }
         /* Minimal styles for efficient printing */
         * {
             margin: 0;
@@ -464,21 +467,6 @@
         });
 
         // Function to calculate page breaks for large tables
-        function optimizeForPrinting() {
-            const table = document.querySelector('.receipt-table');
-            const rows = table.querySelectorAll('tbody tr');
-            const maxRowsPerPage = 45; // Adjust based on your paper size
-            
-            rows.forEach((row, index) => {
-                if (index > 0 && index % maxRowsPerPage === 0) {
-                    // Add a page break before this row
-                    row.style.pageBreakBefore = 'always';
-                }
-            });
-        }
-
-        // Call optimization before printing
-        window.addEventListener('beforeprint', optimizeForPrinting);
         
         // Ensure black header prints correctly
         window.addEventListener('beforeprint', function() {

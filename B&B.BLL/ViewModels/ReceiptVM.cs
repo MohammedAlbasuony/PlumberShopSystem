@@ -22,11 +22,12 @@ namespace B_B.BLL.ViewModels
         public IEnumerable<SelectListItem>? Suppliers { get; set; }
         public IEnumerable<SelectListItem>? Clients { get; set; }
         public IEnumerable<SelectListItem>? Products { get; set; }
-
-
-
-       
-
+        public List<ReceiptSupplierTotalVM> SupplierTotals { get; set; }
     }
-
+    public class ReceiptSupplierTotalVM
+    {
+        public string SupplierName { get; set; }
+        public decimal TotalCost { get; set; }
+        public decimal TotalPrice { get; set; }
+    }
 }

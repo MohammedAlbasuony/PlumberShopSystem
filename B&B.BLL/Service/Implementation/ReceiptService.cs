@@ -76,9 +76,20 @@ namespace B_B.BLL.Service.Implementation
 
             if (newSupplier != null)
             {
-                await _supplierRepo.AddAsync(newSupplier);
-                await _supplierRepo.SaveAsync();
-                supplierId = newSupplier.Id;
+                // 🔹 Try to find existing supplier (case-insensitive)
+                var existingSupplier = (await _supplierRepo.GetAllAsync())
+                    .FirstOrDefault(s => string.Equals(s.Name, newSupplier.Name, StringComparison.OrdinalIgnoreCase));
+
+                if (existingSupplier != null)
+                {
+                    supplierId = existingSupplier.Id;
+                }
+                else
+                {
+                    await _supplierRepo.AddAsync(newSupplier);
+                    await _supplierRepo.SaveAsync();
+                    supplierId = newSupplier.Id;
+                }
             }
             else if (receipt.SupplierId.HasValue)
             {
@@ -88,6 +99,7 @@ namespace B_B.BLL.Service.Implementation
             {
                 throw new InvalidOperationException("A supplier must be selected or provided.");
             }
+
 
             receipt.SupplierId = supplierId;
 
@@ -144,9 +156,22 @@ namespace B_B.BLL.Service.Implementation
 
             if (newPlumber != null)
             {
-                await _plumberRepo.AddAsync(newPlumber);
-                await _plumberRepo.SaveAsync();
-                receipt.PlumberId = newPlumber.Id;
+                var existingPlumber = await _context.Plumbers
+                    .FirstOrDefaultAsync(p =>
+                        p.Name.Trim().ToLower() ==
+                        newPlumber.Name.Trim().ToLower());
+
+                if (existingPlumber != null)
+                {
+                    receipt.PlumberId = existingPlumber.Id;
+                }
+                else
+                {
+                    await _plumberRepo.AddAsync(newPlumber);
+                    await _plumberRepo.SaveAsync();
+
+                    receipt.PlumberId = newPlumber.Id;
+                }
             }
 
             // ✅ Calculate totals and refunds

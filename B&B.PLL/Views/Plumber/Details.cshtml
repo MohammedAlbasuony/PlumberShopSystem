@@ -1,0 +1,588 @@
+﻿@model B_B.BLL.ViewModels.PlumberListVM
+
+<div class="page-content active">
+    <div class="content-section">
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h3>@Model.Name</h3>
+                <p class="text-muted mb-0">
+                    @Model.Phone
+                </p>
+            </div>
+
+            <a asp-action="Index" class="btn btn-secondary">
+                <i class="fas fa-arrow-right"></i>
+                رجوع
+            </a>
+        </div>
+
+        <!-- Summary -->
+        <div class="table-container mb-4">
+            <table class="table table-bordered mb-0">
+                <thead>
+                    <tr>
+                        <th>عدد الإيصالات</th>
+                        <th>إجمالي المبالغ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td id="filteredCount">@Model.ReceiptCount</td>
+                        <td id="filteredTotal">@Model.TotalAmount.ToString("N2")</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Supplier Summary -->
+        <div class="table-container mb-4">
+            <h4 class="mb-3">إجمالي حسب المورد</h4>
+            <table class="table table-bordered mb-0">
+                <thead>
+                    <tr>
+                        <th>المورد</th>
+                        <th>عدد الإيصالات</th>
+                        <th>الإجمالي</th>
+                    </tr>
+                </thead>
+                <tbody id="supplierSummaryBody">
+                    @foreach (var supplier in Model.SupplierTotals)
+                    {
+                        <tr>
+                            <td>@supplier.SupplierName</td>
+                            <td>@supplier.ReceiptCount</td>
+                            <td>@supplier.TotalAmount.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @{
+            var allSuppliers = Model.Receipts
+            .SelectMany(r => r.SupplierTotals)
+            .Select(s => s.SupplierName)
+            .Distinct()
+            .ToList();
+        }
+
+        <!-- Filters Section - Under Supplier Summary -->
+        <div class="filter-section mb-4">
+            <div class="filter-header d-flex justify-content-between align-items-center">
+                <span class="filter-title">
+                    <i class="fas fa-sliders-h me-2"></i>فلترة التفاصيل
+                </span>
+                <button id="clearFilters" class="btn-clear" title="مسح جميع الفلاتر">
+                    <i class="fas fa-times-circle me-1"></i>مسح الكل
+                </button>
+            </div>
+            <div class="filter-body">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label class="filter-label">من تاريخ</label>
+                        <div class="input-icon-wrapper">
+                            <i class="fas fa-calendar-alt"></i>
+                            <input type="date" id="dateFrom" class="filter-input" />
+                        </div>
+                    </div>
+                    <div class="filter-divider"></div>
+                    <div class="filter-group">
+                        <label class="filter-label">إلى تاريخ</label>
+                        <div class="input-icon-wrapper">
+                            <i class="fas fa-calendar-alt"></i>
+                            <input type="date" id="dateTo" class="filter-input" />
+                        </div>
+                    </div>
+                    <div class="filter-divider"></div>
+                    <div class="filter-group flex-grow-1">
+                        <label class="filter-label">بحث باسم العميل</label>
+                        <div class="input-icon-wrapper">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="nameSearch" class="filter-input" placeholder="اكتب للبحث..." />
+                        </div>
+                    </div>
+                </div>
+                <!-- Active Filters Tags -->
+                <div id="activeFilters" class="filter-tags d-none">
+                    <span class="filter-tags-label">نشط:</span>
+                    <div id="filterTags" class="filter-tags-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Receipts Details -->
+        <div class="table-container">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="mb-0">تفاصيل الإيصالات حسب المورد</h4>
+                <span id="showingCount" class="results-badge">
+                    <i class="fas fa-list me-1"></i>@Model.ReceiptCount إيصال
+                </span>
+            </div>
+
+            <!-- No Results Message -->
+            @* <div id="noResults" class="no-results d-none">
+                <div class="no-results-icon">
+                    <i class="fas fa-search"></i>
+                </div>
+                <h6>لا توجد نتائج</h6>
+                <p>لم يتم العثور على إيصالات مطابقة لمعايير البحث</p>
+                <button onclick="document.getElementById('clearFilters').click()" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-redo me-1"></i>إعادة تعيين البحث
+                </button>
+            </div> *@
+
+            <table class="table table-bordered text-center" id="receiptsTable">
+                <thead class="table-light">
+                    <tr>
+                        <th>الإيصال</th>
+                        <th>التاريخ</th>
+                        <th>العميل</th>
+                        @foreach (var sup in allSuppliers)
+                        {
+                            <th>@sup</th>
+                        }
+                        <th>الإجمالي</th>
+                        @* <th>المدفوع</th>
+                        <th>المتبقي</th> *@
+                    </tr>
+                </thead>
+                <tbody id="receiptsBody">
+                    @foreach (var r in Model.Receipts)
+                    {
+                        var remaining = r.TotalAmount - r.PaidAmount;
+                        <tr data-date="@r.Date.ToString("yyyy-MM-dd")"
+                            data-client="@r.ClientName"
+                            data-total="@r.TotalAmount"
+                            data-paid="@r.PaidAmount">
+                            <td>@r.ReceiptId</td>
+                            <td>@r.Date.ToString("yyyy/MM/dd")</td>
+                            <td>@r.ClientName</td>
+                            @foreach (var sup in allSuppliers)
+                            {
+                                var value = r.SupplierTotals.FirstOrDefault(x => x.SupplierName == sup);
+                                <td data-supplier="@sup" data-cost="@(value?.TotalCost ?? 0)">
+                                    @(value != null ? value.TotalCost.ToString("N2") : "-")
+                                </td>
+                            }
+                            <td>@r.TotalAmount.ToString("N2")</td>
+                            @* <td>@r.PaidAmount.ToString("N2")</td>
+                            <td class="@(remaining > 0 ? "text-danger" : "text-success")">
+                                @Math.Abs(remaining).ToString("N2")
+                            </td> *@
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        /* Filter Section Styles */
+        .filter-section {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border: 1px solid #dee2e6;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .filter-header {
+            background: linear-gradient(135deg, #4a6cf7 0%, #6366f1 100%);
+            color: white;
+            padding: 10px 20px;
+        }
+
+        .filter-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .btn-clear {
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-clear:hover {
+            background: rgba(255,255,255,0.25);
+            color: white;
+        }
+
+        .filter-body {
+            padding: 20px;
+        }
+
+        .filter-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 16px;
+        }
+
+        .filter-group {
+            flex: 0 0 auto;
+            min-width: 180px;
+        }
+
+        .filter-group.flex-grow-1 {
+            flex: 1;
+        }
+
+        .filter-label {
+            display: block;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .input-icon-wrapper {
+            position: relative;
+        }
+
+        .input-icon-wrapper i {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #adb5bd;
+            font-size: 0.85rem;
+            pointer-events: none;
+        }
+
+        .filter-input {
+            width: 100%;
+            padding: 8px 36px 8px 14px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            background: white;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+
+        .filter-input:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+        }
+
+        .filter-input::placeholder {
+            color: #adb5bd;
+        }
+
+        .filter-divider {
+            width: 1px;
+            height: 40px;
+            background: #dee2e6;
+            align-self: center;
+        }
+
+        /* Filter Tags */
+        .filter-tags {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px solid #dee2e6;
+        }
+
+        .filter-tags-label {
+            font-size: 0.75rem;
+            color: #6c757d;
+            font-weight: 600;
+        }
+
+        .filter-tags-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .filter-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: white;
+        }
+
+        .filter-tag.date {
+            background: linear-gradient(135deg, #0ea5e9, #38bdf8);
+        }
+
+        .filter-tag.name {
+            background: linear-gradient(135deg, #8b5cf6, #a78bfa);
+        }
+
+        .filter-tag .tag-close {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            padding: 0;
+            font-size: 0.7rem;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+
+        .filter-tag .tag-close:hover {
+            opacity: 1;
+        }
+
+        /* Results Badge */
+        .results-badge {
+            background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            color: #475569;
+            font-weight: 500;
+        }
+
+        /* No Results */
+        .no-results {
+            text-align: center;
+            padding: 50px 20px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border: 2px dashed #e2e8f0;
+        }
+
+        .no-results-icon {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, #e0e7ff, #c7d2fe);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            font-size: 1.8rem;
+            color: #6366f1;
+        }
+
+        .no-results h6 {
+            color: #334155;
+            margin-bottom: 6px;
+        }
+
+        .no-results p {
+            color: #94a3b8;
+            font-size: 0.85rem;
+            margin-bottom: 16px;
+        }
+
+        /* Table Row Animation */
+        #receiptsBody tr {
+            transition: opacity 0.2s ease;
+        }
+
+        #receiptsBody tr:hover {
+            background-color: #f8fafc !important;
+        }
+
+        /* Responsive */
+        @@media (max-width: 768px) {
+            .filter-row {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .filter-divider {
+                display: none;
+            }
+
+            .filter-group {
+                width: 100%;
+                min-width: unset;
+            }
+
+            .filter-group.flex-grow-1 {
+                flex: unset;
+            }
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const dateFrom = document.getElementById('dateFrom');
+            const dateTo = document.getElementById('dateTo');
+            const nameSearch = document.getElementById('nameSearch');
+            const clearFilters = document.getElementById('clearFilters');
+            const receiptsBody = document.getElementById('receiptsBody');
+            const supplierSummaryBody = document.getElementById('supplierSummaryBody');
+            const filteredCount = document.getElementById('filteredCount');
+            const filteredTotal = document.getElementById('filteredTotal');
+            const showingCount = document.getElementById('showingCount');
+            const noResults = document.getElementById('noResults');
+            const activeFilters = document.getElementById('activeFilters');
+            const filterTags = document.getElementById('filterTags');
+            const receiptsTable = document.getElementById('receiptsTable');
+
+            const supplierNames = @Html.Raw(Json.Serialize(allSuppliers));
+
+            function formatNumber(num) {
+                return num.toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+            }
+
+            function formatDateArabic(dateStr) {
+                if (!dateStr) return '';
+                const date = new Date(dateStr);
+                return date.toLocaleDateString('ar-SA');
+            }
+
+            function filterReceipts() {
+                const fromDate = dateFrom.value;
+                const toDate = dateTo.value;
+                const searchName = nameSearch.value.trim().toLowerCase();
+
+                const rows = receiptsBody.querySelectorAll('tr');
+                let visibleCount = 0;
+                let visibleTotal = 0;
+
+                const supplierTotals = {};
+                supplierNames.forEach(name => {
+                    supplierTotals[name] = { count: 0, total: 0 };
+                });
+
+                rows.forEach(row => {
+                    const rowDate = row.getAttribute('data-date');
+                    const clientName = row.getAttribute('data-client').toLowerCase();
+                    const total = parseFloat(row.getAttribute('data-total')) || 0;
+
+                    let showRow = true;
+
+                    if (fromDate && rowDate < fromDate) showRow = false;
+                    if (toDate && rowDate > toDate) showRow = false;
+                    if (searchName && !clientName.includes(searchName)) showRow = false;
+
+                    row.style.display = showRow ? '' : 'none';
+
+                    if (showRow) {
+                        visibleCount++;
+                        visibleTotal += total;
+
+                        const supplierCells = row.querySelectorAll('td[data-supplier]');
+                        supplierCells.forEach(cell => {
+                            const supName = cell.getAttribute('data-supplier');
+                            const cost = parseFloat(cell.getAttribute('data-cost')) || 0;
+                            if (cost > 0 && supplierTotals[supName]) {
+                                supplierTotals[supName].count++;
+                                supplierTotals[supName].total += cost;
+                            }
+                        });
+                    }
+                });
+
+                // Update main summary
+                filteredCount.textContent = visibleCount;
+                filteredTotal.textContent = formatNumber(visibleTotal);
+
+                // Update showing count
+                showingCount.innerHTML = `<i class="fas fa-list me-1"></i>${visibleCount} إيصال`;
+
+                // Show/hide elements
+                noResults.classList.toggle('d-none', visibleCount > 0);
+                receiptsTable.classList.toggle('d-none', visibleCount === 0);
+
+                // Update supplier summary
+                updateSupplierSummary(supplierTotals);
+
+                // Update filter tags
+                updateFilterTags(fromDate, toDate, searchName);
+            }
+
+            function updateSupplierSummary(supplierTotals) {
+                let html = '';
+                let hasData = false;
+
+                supplierNames.forEach(name => {
+                    const data = supplierTotals[name];
+                    if (data.count > 0) {
+                        hasData = true;
+                        html += `
+                            <tr>
+                                <td>${name}</td>
+                                <td>${data.count}</td>
+                                <td>${formatNumber(data.total)}</td>
+                            </tr>
+                        `;
+                    }
+                });
+
+                if (!hasData) {
+                    html = '<tr><td colspan="3" class="text-center text-muted py-3">لا توجد بيانات</td></tr>';
+                }
+
+                supplierSummaryBody.innerHTML = html;
+            }
+
+            function updateFilterTags(fromDate, toDate, searchName) {
+                let tags = [];
+                let hasFilters = false;
+
+                if (fromDate) {
+                    tags.push(`<span class="filter-tag date">من: ${formatDateArabic(fromDate)} <button class="tag-close" onclick="removeFilter('from')">&times;</button></span>`);
+                    hasFilters = true;
+                }
+
+                if (toDate) {
+                    tags.push(`<span class="filter-tag date">إلى: ${formatDateArabic(toDate)} <button class="tag-close" onclick="removeFilter('to')">&times;</button></span>`);
+                    hasFilters = true;
+                }
+
+                if (searchName) {
+                    tags.push(`<span class="filter-tag name">"${searchName}" <button class="tag-close" onclick="removeFilter('name')">&times;</button></span>`);
+                    hasFilters = true;
+                }
+
+                activeFilters.classList.toggle('d-none', !hasFilters);
+                filterTags.innerHTML = tags.join('');
+            }
+
+            window.removeFilter = function(type) {
+                switch(type) {
+                    case 'from': dateFrom.value = ''; break;
+                    case 'to': dateTo.value = ''; break;
+                    case 'name': nameSearch.value = ''; break;
+                }
+                filterReceipts();
+            };
+
+            // Event listeners
+            dateFrom.addEventListener('change', filterReceipts);
+            dateTo.addEventListener('change', filterReceipts);
+            nameSearch.addEventListener('input', filterReceipts);
+
+            clearFilters.addEventListener('click', function () {
+                dateFrom.value = '';
+                dateTo.value = '';
+                nameSearch.value = '';
+                filterReceipts();
+            });
+
+            // Escape to clear
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') clearFilters.click();
+            });
+        });
+    </script>
+}

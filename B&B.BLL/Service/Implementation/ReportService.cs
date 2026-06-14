@@ -57,12 +57,9 @@ namespace B_B.BLL.Service.Implementation
         }
         public async Task<ReportSummaryVM> GetOutReceiptsReportAsync(int year = 0)
         {
-            if (year == 0)
-                year = DateTime.Now.Year;
-
             var receipts = await _context.Receipts
                 .Include(r => r.Client)
-                .Where(r => r.ReceiptType == ReceiptType.Out && r.Date.Year == year)
+                .Where(r => r.ReceiptType == ReceiptType.Out && (year == 0 || r.Date.Year == year))
                 .ToListAsync();
 
             if (!receipts.Any())

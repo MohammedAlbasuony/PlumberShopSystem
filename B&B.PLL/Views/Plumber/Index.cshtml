@@ -8,114 +8,57 @@
                 <input type="text" id="searchInput" class="search-input" placeholder="ابحث عن سباكين..." />
             </div>
         </div>
+        @* <form asp-action="ImportSuppliers"
+              method="post"
+              enctype="multipart/form-data">
 
+            <input type="file" name="file" class="form-control" />
+
+            <button type="submit" class="btn btn-primary mt-2">
+                Upload
+            </button>
+        </form> *@
         <div class="table-container">
             <table class="table" id="plumbersTable">
                 <thead>
                     <tr>
                         <th>الاسم</th>
                         <th>الهاتف</th>
-                        <th>الإيصالات</th>
+                        <th>عدد الإيصالات</th>
+                        <th>إجمالي المبالغ</th>
+                        <th>الإجراءات</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody">
                     @foreach (var plumber in Model)
                     {
-                        // Calculate total amounts for all receipts of this plumber
-                        var totalAmount = plumber.Receipts.Sum(r => r.TotalAmount);
-                        var totalPaid = plumber.Receipts.Sum(r => r.PaidAmount);
-                        var totalRemaining = totalAmount - totalPaid;
+                        <tr id="row-@plumber.Id"
+                            data-plumbername="@plumber.Name.ToLower()">
 
-                        var totalRemainingClass = totalRemaining < 0 ? "text-warning" :
-                        (totalRemaining > 0 ? "text-danger" : "text-success");
-
-                        <tr id="row-@plumber.Id" data-plumbername="@plumber.Name.ToLower()">
                             <td class="plumber-name">@plumber.Name</td>
+
                             <td>@plumber.Phone</td>
+
                             <td>
-                                @if (plumber.Receipts.Any())
-                                {
-                                   
-
-                                    <div class="table-container">
-                                        <table class="table table-bordered">
-                                            <thead>
-                                                <tr>
-                                                    <th>رقم الإيصال</th>
-                                                    <th>التاريخ</th>
-                                                    <th>العميل</th>
-                                                    <th>الإجمالي</th>
-                                                    <th>المدفوع</th>
-                                                    <th>المتبقي</th>
-                                                    @* <th>الحالة</th> *@
-                                                    <th>الإجراءات</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach (var r in plumber.Receipts)
-                                                {
-                                                    var remainingAmount = r.TotalAmount - r.PaidAmount;
-                                                    var isOwedToPlumber = remainingAmount < 0;
-                                                    var isPlumberOwes = remainingAmount > 0;
-                                                    var isSettled = remainingAmount == 0;
-
-                                                    var remainingAmountClass = isOwedToPlumber ? "text-warning" :
-                                                    (isPlumberOwes ? "text-danger" : "text-success");
-                                                    var statusText = isOwedToPlumber ? "نحن مدينون للسباك" :
-                                                    (isPlumberOwes ? "السباك مدين لنا" : "تم التسوية");
-                                                    var statusIcon = isOwedToPlumber ? "fa-arrow-down" :
-                                                    (isPlumberOwes ? "fa-arrow-up" : "fa-check");
-                                                    var statusBg = isOwedToPlumber ? "bg-warning-light" :
-                                                    (isPlumberOwes ? "bg-danger-light" : "bg-success-light");
-
-                                                    <tr>
-                                                        <td>@r.ReceiptId</td>
-                                                        <td>@r.Date.ToString("yyyy/MM/dd")</td>
-                                                        <td>@r.ClientName</td>
-                                                        <td>@r.TotalAmount.ToString("N2")</td>
-                                                        <td>
-                                                            @if (r.PaidAmount != 0)
-                                                            {
-                                                                <span class="@(r.PaidAmount > 0 ? "text-success" : "text-danger")">
-                                                                    @r.PaidAmount.ToString("N2")
-                                                                </span>
-                                                            }
-                                                            else
-                                                            {
-                                                                <span class="text-muted">-</span>
-                                                            }
-                                                        </td>
-                                                        <td>
-                                                            <span class="@remainingAmountClass">
-                                                                @Math.Abs(remainingAmount).ToString("N2")
-                                                            </span>
-                                                        </td>
-                                                        @* <td>
-                                                            <span class="status-badge @statusBg">
-                                                                <i class="fas @statusIcon"></i>
-                                                                @statusText
-                                                            </span>
-                                                        </td> *@
-                                                        <td class="action-cell">
-                                                           
-
-                                                            <a asp-controller="Receipt" asp-action="Review" asp-route-id="@r.ReceiptId"
-                                                               class="btn btn-info btn-sm ml-2">
-                                                                <i class="fas fa-file-alt"></i> تفاصيل
-                                                            </a>
-                                                        </td>
-                                                    </tr>
-                                                }
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                }
-                                else
-                                {
-                                    <span class="text-muted">لا توجد إيصالات</span>
-                                }
+                                <span class="badge bg-info">
+                                    @plumber.ReceiptCount
+                                </span>
                             </td>
-                          
+
+                            <td>
+                                <strong>
+                                    @plumber.TotalAmount.ToString("N2")
+                                </strong>
+                            </td>
+
+                            <td class="action-cell">
+                                <a asp-action="Details"
+                                   asp-route-id="@plumber.Id"
+                                   class="btn btn-info btn-sm">
+                                    <i class="fas fa-eye"></i>
+                                    التفاصيل
+                                </a>
+                            </td>
                         </tr>
                     }
                 </tbody>
@@ -128,7 +71,6 @@
         <div class="pagination-info" id="paginationInfo"></div>
     </div>
 </div>
-
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
