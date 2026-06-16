@@ -17,6 +17,7 @@ namespace B_B.DAL.Entity
         public Product Product { get; set; }
 
         public decimal Quantity { get; set; }
+        public decimal Addons { get; set; }
         public decimal UnitPrice { get; set; }
         public decimal RefundQuantity { get; set; } = 0;
 
@@ -25,7 +26,7 @@ namespace B_B.DAL.Entity
 
         // ✅ Total after discount (replaces old Total logic)
         public decimal Total =>
-            (Quantity * UnitPrice) * (1 - (DiscountPercentage / 100));
+            ((Quantity + Addons) * UnitPrice) * (1 - (DiscountPercentage / 100));
 
         public decimal CostPrice { get; set; }
     }

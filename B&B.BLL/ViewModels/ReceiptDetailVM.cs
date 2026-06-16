@@ -13,6 +13,7 @@ namespace B_B.BLL.ViewModels
         public int ProductId { get; set; }
 
         public decimal Quantity { get; set; }
+        public decimal Addons { get; set; }
 
         public decimal Cost { get; set; }
 
@@ -23,8 +24,9 @@ namespace B_B.BLL.ViewModels
         public decimal DiscountPercentage { get; set; } 
 
         public decimal Total =>
-                   (Quantity * UnitPrice) * (1 - (DiscountPercentage / 100));
+                   ((Quantity + Addons) * UnitPrice) * (1 - (DiscountPercentage / 100));
     }
+
 
 
 }

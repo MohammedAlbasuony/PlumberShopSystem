@@ -111,8 +111,10 @@
                             <th>المنتج</th>
                             <th>الكمية</th>
                             <th>التكلفة</th>
+                            <th>الاضافات</th>
                             <th>سعر الوحدة</th>
                             <th>نسبة الخصم (%)</th>
+                            <th>المرتجع</th>
                             <th>الإجمالي بعد الخصم</th>
                             <th>الإجراء</th>
                         </tr>
@@ -126,6 +128,10 @@
                 <div class="form-group">
                     <label class="form-label"><strong>الإجمالي الكلي:</strong></label>
                     <div class="form-control-static" id="grandTotal">0.00</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label"><strong>اجمالي الاضافات:</strong></label>
+                    <div class="form-control-static" id="addonsTotal">0.00</div>
                 </div>
                 <div class="form-group">
                     <label class="form-label"><strong>إجمالي التكلفة:</strong></label>
@@ -162,9 +168,11 @@
             ProductId = d.ProductId,
             ProductName = d.ProductName,
             Quantity = d.Quantity,
+            Addons = d.Addons,
             UnitPrice = d.UnitPrice,
             Cost = d.Cost,
-            DiscountPercentage = d.DiscountPercentage
+            DiscountPercentage = d.DiscountPercentage,
+            RefundQuantity = d.RefundQuantity
         }),
         new System.Text.Json.JsonSerializerOptions
         {
@@ -377,13 +385,13 @@
                 let qtyInput = existingRow.find(".qty");
                 qtyInput.val((parseFloat(qtyInput.val() || 0) + 1)).trigger("input");
             } else {
-                addProductRow(productId, productName, 1, price, cost, 0, 0);
+                addProductRow(productId, productName, 1, price, cost, 0, 0, 0);
             }
             saveDraft();
             filterReceiptDetails(); // refresh filter after adding
         });
 
-        function addProductRow(id, name, qty, price, cost, discount, refund){
+        function addProductRow(id, name, qty, price, cost, discount, refund, addons = 0){
             const safeName = escapeHtml(name);
             let row = `
             <tr data-id="${id}" data-cost="${cost}" data-name="${safeName}">
@@ -391,22 +399,36 @@
                     <input type="hidden" name="ReceiptDetails[${detailIndex}].ProductId" value="${id}" />
                     ${safeName}
                 </td>
-                <td><input type="number" name="ReceiptDetails[${detailIndex}].Quantity" value="${qty}"
-                           class="form-input qty" min="0" step="0.001" /></td>
-
+                <td>
+                    <input type="number"
+                           name="ReceiptDetails[${detailIndex}].Quantity"
+                           value="${qty}"
+                           class="form-input qty"
+                           min="0"
+                           step="0.001" />
+                </td>
                 <td class="rowCost">${cost}</td>
-
-                <td><input type="number" name="ReceiptDetails[${detailIndex}].UnitPrice" value="${price}"
-                           class="form-input unitPrice" min="0" step="0.01" /></td>
-
+                <td>
+                    <input type="number"
+                           name="ReceiptDetails[${detailIndex}].Addons"
+                           value="${addons}"
+                           class="form-input addons"
+                           min="0"
+                           step="0.001" />
+                </td>
+                <td>
+                    <input type="number"
+                           name="ReceiptDetails[${detailIndex}].UnitPrice"
+                           value="${price}"
+                           class="form-input unitPrice"
+                           min="0"
+                           step="0.01" />
+                </td>
                 <td><input type="number" name="ReceiptDetails[${detailIndex}].DiscountPercentage" value="${discount}"
                            class="form-input discount" min="0" max="100" step="0.01" /></td>
-
                 <td><input type="number" name="ReceiptDetails[${detailIndex}].RefundQuantity" value="${refund}"
                            class="form-input refund" min="0" step="0.001" /></td>
-
                 <td class="rowTotal">0.00</td>
-
                 <td>
                     <button type="button" class="btn btn-danger btn-sm removeRow">
                         <i class="fas fa-times"></i>
@@ -445,29 +467,32 @@
 
         /* ----------------------- TOTALS ----------------------- */
 
-        $(document).on("input", ".qty, .unitPrice, .discount, .refund, #PaidAmount", function(){
+        $(document).on("input", ".qty, .unitPrice, .discount, .refund, .addons , #PaidAmount", function(){
             updateGrandTotal();
             saveDraft();
         });
 
         function updateGrandTotal(){
-            let total = 0, costTotal = 0;
+            let total = 0, costTotal = 0, totalAddons = 0;
             $("#receiptDetailsTable tbody tr").each(function(){
                 let qty = parseFloat($(this).find(".qty").val()) || 0,
                     price = parseFloat($(this).find(".unitPrice").val()) || 0,
                     cost = parseFloat($(this).data("cost")) || 0,
                     discount = parseFloat($(this).find(".discount").val()) || 0,
+                    addons = parseFloat($(this).find(".addons").val()) || 0,
                     refund = parseFloat($(this).find(".refund").val()) || 0;
 
-                let discountedTotal = (qty - refund) * price * (1 - discount / 100);
+                let discountedTotal = (qty - refund + addons) * price * (1 - discount / 100);
                 $(this).find(".rowTotal").text(discountedTotal.toFixed(2));
 
+                totalAddons += addons;
                 total += discountedTotal;
-                costTotal += (qty - refund) * cost;
+                costTotal += (qty - refund + addons) * cost;
             });
 
             $("#grandTotal").text(total.toFixed(2));
             $("#costTotal").text(costTotal.toFixed(2));
+            $("#addonsTotal").text(totalAddons.toFixed(2));
 
             let paid = parseFloat($("#PaidAmount").val()) || 0;
             $("#remainingAmount").text((total - paid).toFixed(2));
@@ -483,7 +508,6 @@
             const totalRows = rows.length;
 
             if (!searchTerm) {
-                // Show all, reset styles
                 rows.removeClass("hidden-row highlight-match dim-row");
                 countEl.text("").removeClass("active");
                 clearBtn.addClass("d-none");
@@ -524,15 +548,15 @@
         function addRowFromModel(item){
             let productId = item.productId ?? item.ProductId ?? 0;
             let product = products.find(p => p.id == productId);
-
             let productName = item.productName ?? item.ProductName ?? product?.name ?? "اسم غير معروف";
             let cost = item.cost ?? item.Cost ?? product?.cost ?? 0;
             let quantity = item.quantity ?? item.Quantity ?? 1;
             let unitPrice = item.unitPrice ?? item.UnitPrice ?? product?.price ?? 0;
             let discount = item.discountPercentage ?? item.DiscountPercentage ?? 0;
             let refund = item.refundQuantity ?? item.RefundQuantity ?? 0;
+            let addons = item.addons ?? item.Addons ?? 0;
 
-            addProductRow(productId, productName, quantity, unitPrice, cost, discount, refund);
+            addProductRow(productId, productName, quantity, unitPrice, cost, discount, refund, addons);
         }
 
         /* ----------------------- SAVE DRAFT ----------------------- */
@@ -552,11 +576,12 @@
                 details.push({
                     productId: $(this).data("id"),
                     quantity: $(this).find(".qty").val(),
+                    addons: $(this).find(".addons").val(),
                     unitPrice: $(this).find(".unitPrice").val(),
                     discountPercentage: $(this).find(".discount").val(),
                     refundQuantity: $(this).find(".refund").val(),
                     cost: $(this).data("cost"),
-                    productName: $(this).find("td:first").text().trim(),
+                    productName: $(this).data("name")
                 });
             });
 

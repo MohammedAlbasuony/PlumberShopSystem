@@ -106,21 +106,14 @@ namespace B_B.DAL.Repo.Implementation
                 if (r.ReceiptDetails != null && r.ReceiptDetails.Any())
                 {
                     r.RefundAmount = r.ReceiptDetails.Sum(d => d.UnitPrice * d.RefundQuantity);
+                    r.AddonsAmount = r.ReceiptDetails.Sum(d => d.UnitPrice * d.Addons);
                     r.TotalAmount = r.ReceiptDetails
-                        .Sum(d => (d.UnitPrice * (d.Quantity - d.RefundQuantity)) * (1 - (d.DiscountPercentage / 100m)));
+                        .Sum(d => (d.UnitPrice * (d.Quantity - d.RefundQuantity + d.Addons)) * (1 - (d.DiscountPercentage / 100m)));
                 }
             }
 
             return receipts;
         }
-
-
-
-
-
-
-
-
 
         public async Task<Receipt?> GetByIdAsync(int id)
         {
@@ -130,10 +123,9 @@ namespace B_B.DAL.Repo.Implementation
 
                 .Include(r => r.Client)
                 .Include(r => r.Supplier)
+                .Include(r => r.Plumber)
                 .FirstOrDefaultAsync(r => r.Id == id);
-        }
-
-       
+        }      
 
         public async Task UpdateReceipt(Receipt receipt)
         {
@@ -147,6 +139,7 @@ namespace B_B.DAL.Repo.Implementation
             existing.Date = receipt.Date;
             existing.SupplierId = receipt.SupplierId;
             existing.ClientId = receipt.ClientId;
+            existing.PlumberId = receipt.PlumberId;
             existing.PaidAmount = receipt.PaidAmount;
             existing.TotalAmount = receipt.ReceiptDetails.Sum(d => d.UnitPrice * d.Quantity);
 

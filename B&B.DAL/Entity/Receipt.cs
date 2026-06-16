@@ -28,6 +28,7 @@ namespace B_B.DAL.Entity
         // Accounting fields
         public decimal TotalAmount { get; set; }
         public decimal RefundAmount { get; set; }
+        public decimal? AddonsAmount { get; set; }
         public decimal PaidAmount { get; set; }
         public decimal RemainingAmount => TotalAmount - PaidAmount;
         public ReceiptStatus Status { get; set; } = ReceiptStatus.Draft;

@@ -36,6 +36,10 @@
                     <div class="form-control-static">@Model.RefundAmount.ToString("N2")</div>
                 </div>
                 <div class="form-group">
+                    <label class="form-label"><strong>الاضافات:</strong></label>
+                    <div class="form-control-static">@Model.AddonsAmount?.ToString("N2")</div>
+                </div>
+                <div class="form-group">
                     <label class="form-label"><strong>الإجمالي:</strong></label>
                     <div class="form-control-static">@Model.Total.ToString("N2")</div>
                 </div>
@@ -60,7 +64,7 @@
                             <th>المورد</th>
                             <th>الإجمالي قبل الخصم</th>
                             <th>الخصم (%)</th>
-                            <th>الإجمالي بعد الخصم</th>
+                            <th>التكلفه الكليه</th>
                             <th>المبالغ المرتجعة</th>
                             <th>الصافي بعد الخصم</th>
                         </tr>
@@ -73,7 +77,7 @@
                                 <td>@s.SupplierName</td>
                                 <td>@s.TotalBeforeDiscount.ToString("N2")</td>
                                 <td>@s.DiscountPercentage.ToString("N2")%</td>
-                                <td>@s.TotalCost.ToString("N2")</td>
+                                <td>@s.TotalCost?.ToString("N2")</td>
                                 <td>@s.RefundAmount.ToString("N2")</td>
                                 <td>@netAfterDiscount.ToString("N2")</td>
                             </tr>
@@ -82,6 +86,7 @@
 
                 </table>
             </div>
+
 
             <!-- ======================== -->
             <!-- 🟡 PRODUCT DETAILS PART -->
@@ -94,26 +99,30 @@
                             <th>المنتج</th>
                             <th>الكمية</th>
                             <th>المرتجع</th>
+                            <th>الاضافات</th>
                             <th>سعر الوحدة</th>
                             <th>الخصم (%)</th>
                             <th>قيمة المرتجع</th> <!-- 🟢 new -->
+                            <th>قيمة الاضافات</th> <!-- 🟢 new -->
                             <th>الإجمالي بعد الخصم</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var d in Model.ReceiptDetails)
                         {
-                            var netQuantity = d.Quantity - d.RefundQuantity; // ✅ after refund
+                            var netQuantity = d.Quantity - d.RefundQuantity + d.Addons; // ✅ after refund
                             var discountedTotal = (d.UnitPrice * netQuantity) * (1 - (d.DiscountPercentage / 100m));
                             var refundAmount = (d.UnitPrice * d.RefundQuantity) * (1 - (d.DiscountPercentage / 100m)); // 🟢 refund value
-
+                            var AddonsAmount = (d.UnitPrice * d.Addons) * (1 - (d.DiscountPercentage / 100m));
                             <tr>
                                 <td>@d.ProductName</td>
                                 <td>@d.Quantity</td>
                                 <td>@d.RefundQuantity</td>
+                                <td>@d.Addons</td>
                                 <td>@($"{d.UnitPrice:N2}")</td>
                                 <td>@($"{d.DiscountPercentage:N2}")%</td>
                                 <td>@($"{refundAmount:N2}")</td> <!-- 🟢 show refund amount -->
+                                <td>@($"{AddonsAmount:N2}")</td> <!-- 🟢 show refund amount -->
                                 <td>@($"{discountedTotal:N2}")</td>
                             </tr>
                         }

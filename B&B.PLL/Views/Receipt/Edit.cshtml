@@ -36,6 +36,16 @@
                         <select asp-for="ClientId" asp-items="Model.Clients" class="form-input"></select>
                         <span asp-validation-for="ClientId" class="text-danger"></span>
                     </div>
+                    <!-- Plumber selection -->
+                    <div class="form-grid mt-4">
+                        <div class="form-group">
+                            <label class="form-label">اختر سباك موجود</label>
+                            <select asp-for="PlumberId" asp-items="Model.Plumbers" class="form-input">
+                                <option value="">-- سباك جديد --</option>
+                            </select>
+                            <span asp-validation-for="PlumberId" class="text-danger"></span>
+                        </div>
+                    </div>
                 }
             </div>
 
@@ -91,6 +101,7 @@
                             <th>المنتج</th>
                             <th>الكمية</th>
                             <th>التكلفة</th>
+                            <th>الاضافات</th>
                             <th>سعر الوحدة</th>
                             <th>نسبة الخصم (%)</th>
                             <th>المرتجع</th>
@@ -109,6 +120,10 @@
                 <div class="form-group">
                     <label class="form-label"><strong>الإجمالي الكلي:</strong></label>
                     <div class="form-control-static" id="grandTotal">0.00</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label"><strong>اجمالي الاضافات:</strong></label>
+                    <div class="form-control-static" id="addonsTotal">0.00</div>
                 </div>
                 <div class="form-group">
                     <label class="form-label"><strong>إجمالي التكلفة:</strong></label>
@@ -142,13 +157,14 @@
     var productsJson = ViewBag.ProductsJson as string ?? "[]";
     var details = Model?.ReceiptDetails ?? new List<ReceiptDetailVM>();
 
-    // 🔥 ENHANCED: Serialize with all necessary properties
+    // 🔥 ENHANCED: Serialize with all necessary properties (incl. Addons)
     var detailsJson = System.Text.Json.JsonSerializer.Serialize(
         details.Select(d => new
         {
             ProductId = d.ProductId,
             ProductName = d.ProductName,
             Quantity = d.Quantity,
+            Addons = d.Addons,
             UnitPrice = d.UnitPrice,
             Cost = d.Cost,
             DiscountPercentage = d.DiscountPercentage,
@@ -350,12 +366,12 @@
                 let qtyInput = existingRow.find(".qty");
                 qtyInput.val((parseFloat(qtyInput.val() || 0) + 1)).trigger("input");
             } else {
-                addProductRow(productId, productName, 1, price, cost, 0, 0);
+                addProductRow(productId, productName, 1, price, cost, 0, 0, 0);
             }
             filterReceiptDetails();
         });
 
-        function addProductRow(id, name, qty, price, cost, discount, refund){
+        function addProductRow(id, name, qty, price, cost, discount, refund, addons = 0){
             const safeName = escapeHtml(name);
             let row = `
             <tr data-id="${id}" data-cost="${cost}" data-name="${safeName}">
@@ -368,6 +384,10 @@
                            value="${qty}" class="form-input qty" min="0" step="0.001" />
                 </td>
                 <td class="rowCost">${cost}</td>
+                <td>
+                    <input type="number" name="ReceiptDetails[${detailIndex}].Addons"
+                           value="${addons}" class="form-input addons" min="0" step="0.001" />
+                </td>
                 <td>
                     <input type="number" name="ReceiptDetails[${detailIndex}].UnitPrice"
                            value="${price}" class="form-input unitPrice" min="0" step="0.01" />
@@ -415,28 +435,32 @@
             filterReceiptDetails();
         });
 
-        $(document).on("input", ".qty, .unitPrice, .discount, .refund, #PaidAmount", function(){
+        $(document).on("input", ".qty, .unitPrice, .discount, .refund, .addons, #PaidAmount", function(){
             updateGrandTotal();
         });
 
         // ---------- Totals ----------
         function updateGrandTotal(){
-            let total = 0, costTotal = 0;
+            let total = 0, costTotal = 0, totalAddons = 0;
             $("#receiptDetailsTable tbody tr").each(function(){
                 let qty = parseFloat($(this).find(".qty").val()) || 0,
                     price = parseFloat($(this).find(".unitPrice").val()) || 0,
                     cost = parseFloat($(this).data("cost")) || 0,
                     discount = parseFloat($(this).find(".discount").val()) || 0,
+                    addons = parseFloat($(this).find(".addons").val()) || 0,
                     refund = parseFloat($(this).find(".refund").val()) || 0;
 
-                let discountedTotal = (qty - refund) * price * (1 - discount / 100);
+                let discountedTotal = (qty - refund + addons) * price * (1 - discount / 100);
                 $(this).find(".rowTotal").text(discountedTotal.toFixed(2));
+
+                totalAddons += addons;
                 total += discountedTotal;
-                costTotal += (qty - refund) * cost;
+                costTotal += (qty - refund + addons) * cost;
             });
 
             $("#grandTotal").text(total.toFixed(2));
             $("#costTotal").text(costTotal.toFixed(2));
+            $("#addonsTotal").text(totalAddons.toFixed(2));
 
             let paid = parseFloat($("#PaidAmount").val()) || 0;
             $("#remainingAmount").text((total - paid).toFixed(2));
@@ -460,8 +484,9 @@
             let unitPrice = item.unitPrice ?? item.UnitPrice ?? (product?.price ?? 0);
             let discount = item.discountPercentage ?? item.DiscountPercentage ?? 0;
             let refund = item.refundQuantity ?? item.RefundQuantity ?? 0;
+            let addons = item.addons ?? item.Addons ?? 0;
 
-            addProductRow(productId, productName, quantity, unitPrice, cost, discount, refund);
+            addProductRow(productId, productName, quantity, unitPrice, cost, discount, refund, addons);
         }
 
         /* ----------------------- 🔥 RECEIPT DETAILS SEARCH ----------------------- */

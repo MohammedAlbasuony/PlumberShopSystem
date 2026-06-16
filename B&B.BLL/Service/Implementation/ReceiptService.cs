@@ -176,7 +176,7 @@ namespace B_B.BLL.Service.Implementation
 
             // ✅ Calculate totals and refunds
             receipt.TotalAmount = receipt.ReceiptDetails.Sum(d =>
-                (d.UnitPrice * (d.Quantity - d.RefundQuantity)) * (1 - (d.DiscountPercentage / 100m)));
+                (d.UnitPrice * (d.Quantity - d.RefundQuantity + d.Addons)) * (1 - (d.DiscountPercentage / 100m)));
 
             receipt.RefundAmount = receipt.ReceiptDetails.Sum(d =>
                 d.UnitPrice * d.RefundQuantity * (1 - (d.DiscountPercentage / 100m)));
@@ -353,6 +353,7 @@ namespace B_B.BLL.Service.Implementation
                         ProductId = d.ProductId,
                         Quantity = d.Quantity,
                         UnitPrice = d.UnitPrice,
+                        Addons = d.Addons,
                         RefundQuantity = d.RefundQuantity,
                         DiscountPercentage = d.DiscountPercentage
                     });
@@ -360,10 +361,12 @@ namespace B_B.BLL.Service.Implementation
 
                 // Recalculate totals
                 existing.TotalAmount = existing.ReceiptDetails.Sum(d =>
-                    (d.UnitPrice * (d.Quantity - d.RefundQuantity)) * (1 - (d.DiscountPercentage / 100m)));
+                    (d.UnitPrice * (d.Quantity - d.RefundQuantity + d.Addons)) * (1 - (d.DiscountPercentage / 100m)));
 
                 existing.RefundAmount = existing.ReceiptDetails.Sum(d =>
                     (d.UnitPrice * d.RefundQuantity) * (1 - (d.DiscountPercentage / 100m)));
+                existing.AddonsAmount = existing.ReceiptDetails.Sum(d =>
+                    (d.UnitPrice * d.Addons) * (1 - (d.DiscountPercentage / 100m)));
 
                 // Save receipt first
                 await _context.SaveChangesAsync();
@@ -411,9 +414,9 @@ namespace B_B.BLL.Service.Implementation
                 var product = await _productRepo.GetByIdAsync(detail.ProductId);
 
                 if (updatedReceipt.ReceiptType == ReceiptType.In)
-                    product.Purchases += detail.Quantity;
+                    product.Purchases += (detail.Quantity);
                 else if (updatedReceipt.ReceiptType == ReceiptType.Out)
-                    product.Sold += (detail.Quantity - detail.RefundQuantity);
+                    product.Sold += (detail.Quantity - detail.RefundQuantity + detail.Addons);
 
                 _productRepo.Update(product);
             }
@@ -422,6 +425,7 @@ namespace B_B.BLL.Service.Implementation
             existing.Date = updatedReceipt.Date;
             existing.SupplierId = updatedReceipt.SupplierId;
             existing.ClientId = updatedReceipt.ClientId;
+            existing.PlumberId = updatedReceipt.PlumberId;
             existing.PaidAmount = updatedReceipt.PaidAmount;
             existing.ReceiptType = updatedReceipt.ReceiptType;
 
@@ -433,6 +437,7 @@ namespace B_B.BLL.Service.Implementation
                 {
                     ProductId = d.ProductId,
                     Quantity = d.Quantity,
+                    Addons = d.Addons,
                     UnitPrice = d.UnitPrice,
                     RefundQuantity = d.RefundQuantity,
                     DiscountPercentage = d.DiscountPercentage
@@ -441,10 +446,12 @@ namespace B_B.BLL.Service.Implementation
 
             // Recalculate totals
             existing.TotalAmount = existing.ReceiptDetails.Sum(d =>
-                (d.UnitPrice * (d.Quantity - d.RefundQuantity)) * (1 - (d.DiscountPercentage / 100m)));
+                (d.UnitPrice * (d.Quantity - d.RefundQuantity + d.Addons)) * (1 - (d.DiscountPercentage / 100m)));
 
             existing.RefundAmount = existing.ReceiptDetails.Sum(d =>
                 (d.UnitPrice * d.RefundQuantity) * (1 - (d.DiscountPercentage / 100m)));
+            existing.AddonsAmount = existing.ReceiptDetails.Sum(d =>
+                (d.UnitPrice * d.Addons) * (1 - (d.DiscountPercentage / 100m)));
 
             // Save stock + receipt
             await _productRepo.SaveAsync();
@@ -466,9 +473,6 @@ namespace B_B.BLL.Service.Implementation
                     await AddPaymentToBoxAsync(existing, -Math.Abs(existing.PaidAmount), "تعديل فاتورة شراء");
             }
         }
-
-
-
 
 
         public async Task<List<BoxTransactionVM>> GetBoxTransactionsAsync()
@@ -536,8 +540,6 @@ namespace B_B.BLL.Service.Implementation
             return list;
         }
 
-
-
         public async Task AddExternalPaymentAsync(decimal amount, bool isInflow, string description, string createdBy)
         {
             var payment = new Payment
@@ -552,7 +554,5 @@ namespace B_B.BLL.Service.Implementation
             _context.Payments.Add(payment);
             await _context.SaveChangesAsync();
         }
-
-
     }
 }

@@ -110,6 +110,7 @@
                         <th>الربح</th>
                         <th>المدفوع</th>
                         <th>المرتجع</th>
+                        <th>الاضافات</th>
                         <th>المتبقي</th>
                         <th>الإجراءات</th>
                     </tr>
@@ -161,6 +162,7 @@
                             <td>@($"{r.Profit:N2}")</td>
                             <td>@($"{r.PaidAmount:N2}")</td>
                             <td>@($"{r.RefundAmount:N2}")</td>
+                            <td>@($"{r.AddonsAmount:N2}")</td>
                             <td>
                                 <span class="@remainingAmountClass">
                                     @($"{Math.Abs(r.RemainingAmount):N2}")

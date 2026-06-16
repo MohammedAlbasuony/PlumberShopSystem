@@ -162,7 +162,7 @@
                             {
                                 var value = r.SupplierTotals.FirstOrDefault(x => x.SupplierName == sup);
                                 <td data-supplier="@sup" data-cost="@(value?.TotalCost ?? 0)">
-                                    @(value != null ? value.TotalCost.ToString("N2") : "-")
+                                    @(value != null ? value.TotalCost?.ToString("N2") : "-")
                                 </td>
                             }
                             <td>@r.TotalAmount.ToString("N2")</td>

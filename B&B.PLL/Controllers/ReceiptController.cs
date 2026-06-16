@@ -81,16 +81,17 @@ namespace B_B.PLL.Controllers
                     Total = r.TotalAmount,
                     PaidAmount = r.PaidAmount,
                     RefundAmount = r.RefundAmount,
+                    AddonsAmount = r.AddonsAmount,
                     RemainingAmount = r.RemainingAmount,
                     ReceiptStatus = r.Status.ToString(),
 
                     // Calculate total cost (sum of product cost * quantity sold)
                     CostAmount = r.ReceiptDetails.Sum(d =>
-                        (d.Product?.Cost ?? 0) * (d.Quantity - d.RefundQuantity)),
-
+                        (d.Product?.Cost ?? 0) * (d.Quantity - d.RefundQuantity + d.Addons)),
+                   
                     // Profit = Total sold - total cost
                     Profit = r.TotalAmount - r.ReceiptDetails.Sum(d =>
-                        (d.Product?.Cost ?? 0) * (d.Quantity - d.RefundQuantity))
+                        (d.Product?.Cost ?? 0) * (d.Quantity - d.RefundQuantity + d.Addons))
                 })
                 .ToList();
 
@@ -311,13 +312,14 @@ namespace B_B.PLL.Controllers
                 {
                     ProductId = d.ProductId,
                     Quantity = d.Quantity,
+                    Addons = d.Addons,
                     UnitPrice = d.UnitPrice,
                     DiscountPercentage = d.DiscountPercentage
                 }).ToList()
             };
 
             receipt.TotalAmount = receipt.ReceiptDetails.Sum(d =>
-                (d.UnitPrice * (d.Quantity - d.RefundQuantity)) * (1 - (d.DiscountPercentage / 100m)));
+                (d.UnitPrice * (d.Quantity - d.RefundQuantity + d.Addons)) * (1 - (d.DiscountPercentage / 100m)));
 
             var receiptId = await _receiptService.CreateOutReceiptDraftAsync(receipt, newClient, newPlumber);
 
@@ -371,16 +373,18 @@ namespace B_B.PLL.Controllers
                 PlumberName = receipt.Plumber?.Name,
 
                 Total = receipt.ReceiptDetails.Sum(d =>
-                    (d.UnitPrice * (d.Quantity - d.RefundQuantity)) * (1 - (d.DiscountPercentage / 100m))),
+                    (d.UnitPrice * (d.Quantity - d.RefundQuantity + d.Addons)) * (1 - (d.DiscountPercentage / 100m))),
                 TotalCost = receipt.ReceiptDetails.Sum(d =>
-                    (d.Product.Cost * (d.Quantity - d.RefundQuantity))),
+                    (d.Product.Cost * (d.Quantity - d.RefundQuantity + d.Addons))),
 
                 PaidAmount = receipt.PaidAmount,
                 RefundAmount = receipt.ReceiptDetails.Sum(d =>
                     (d.UnitPrice * d.RefundQuantity) * (1 - (d.DiscountPercentage / 100m))),
-
+                AddonsAmount = receipt.ReceiptDetails.Sum(d =>
+                    (d.UnitPrice * d.Addons) * (1 - (d.DiscountPercentage / 100m))),
+                
                 RemainingAmount = receipt.ReceiptDetails.Sum(d =>
-                    (d.UnitPrice * (d.Quantity - d.RefundQuantity)) * (1 - (d.DiscountPercentage / 100m))) - receipt.PaidAmount,
+                    (d.UnitPrice * (d.Quantity - d.RefundQuantity + d.Addons)) * (1 - (d.DiscountPercentage / 100m))) - receipt.PaidAmount,
 
                 ReceiptStatus = receipt.Status.ToString(),
                 ReceiptDetails = receipt.ReceiptDetails.Select(d => new ReceiptDetailVM
@@ -389,6 +393,7 @@ namespace B_B.PLL.Controllers
                     ProductName = d.Product?.Name ?? "",
                     Quantity = d.Quantity,
                     UnitPrice = d.UnitPrice,
+                    Addons = d.Addons,
                     RefundQuantity = d.RefundQuantity,
                     Cost = d.Product.Cost,
                     DiscountPercentage = d.DiscountPercentage
@@ -416,11 +421,11 @@ namespace B_B.PLL.Controllers
                 DiscountPercentage = g.Any() ? g.Average(d => d.DiscountPercentage) : 0,
 
                 // ✅ before discount
-                TotalBeforeDiscount = g.Sum(d => d.UnitPrice * d.Quantity),
+                TotalBeforeDiscount = g.Sum(d => d.UnitPrice * (d.Quantity - d.RefundQuantity + d.Addons)),
                 RefundBeforeDiscount = g.Sum(d => d.UnitPrice * d.RefundQuantity),
 
                 // ✅ after discount
-                TotalAmount = g.Sum(d => (d.UnitPrice * d.Quantity) * (1 - (d.DiscountPercentage / 100m))),
+                TotalAmount = g.Sum(d => (d.UnitPrice * (d.Quantity - d.RefundQuantity + d.Addons)) * (1 - (d.DiscountPercentage / 100m))),
                 TotalCost = g.Sum(d => (d.Product.Cost * d.Quantity)),
                 RefundAmount = g.Sum(d => (d.UnitPrice * d.RefundQuantity) * (1 - (d.DiscountPercentage / 100m)))
 
@@ -556,12 +561,14 @@ namespace B_B.PLL.Controllers
                     ProductId = d.ProductId,
                     ProductName = d.Product?.Name ?? "اسم غير معروف", // 🔥 ADDED
                     Quantity = d.Quantity,
+                    Addons = d.Addons,
                     UnitPrice = d.UnitPrice,
                     RefundQuantity = d.RefundQuantity,
                     DiscountPercentage = d.DiscountPercentage,
                     Cost = d.Product?.Cost ?? 0,
                 }).ToList(),
                 Suppliers = (await _supplierRepo.GetAllAsync()).Select(s => new SelectListItem { Value = s.Id.ToString(), Text = s.Name }),
+                Plumbers = (await _plumberRepo.GetAllAsync()).Select(s => new SelectListItem { Value = s.Id.ToString(), Text = s.Name }),
                 Clients = (await _clientRepo.GetAllAsync()).Select(c => new SelectListItem { Value = c.Id.ToString(), Text = c.Name }),
                 Products = products.Select(p => new SelectListItem { Value = p.Id.ToString(), Text = p.Name })
             };
@@ -590,6 +597,7 @@ namespace B_B.PLL.Controllers
                 vm.Suppliers = (await _supplierRepo.GetAllAsync()).Select(s => new SelectListItem { Value = s.Id.ToString(), Text = s.Name });
                 vm.Clients = (await _clientRepo.GetAllAsync()).Select(c => new SelectListItem { Value = c.Id.ToString(), Text = c.Name });
                 vm.Products = (await _productRepo.GetAllAsync()).Select(p => new SelectListItem { Value = p.Id.ToString(), Text = p.Name });
+                vm.Plumbers = (await _plumberRepo.GetAllAsync()).Select(p => new SelectListItem { Value = p.Id.ToString(), Text = p.Name });
 
                 // 🔥 ENSURE: Products JSON is available
                 ViewBag.ProductsJson = JsonSerializer.Serialize((await _productRepo.GetAllAsync()).Select(p => new {
@@ -616,6 +624,7 @@ namespace B_B.PLL.Controllers
                 Date = vm.Date,
                 ReceiptType = vm.ReceiptType,
                 SupplierId = vm.SupplierId,
+                PlumberId = vm.PlumberId,
                 ClientId = vm.ClientId,
                 PaidAmount = vm.PaidAmount,
                 RefundAmount = vm.RefundAmount,
@@ -624,6 +633,7 @@ namespace B_B.PLL.Controllers
                 {
                     ProductId = d.ProductId,
                     Quantity = d.Quantity,
+                    Addons = d.Addons,
                     UnitPrice = d.UnitPrice,
                     RefundQuantity = (decimal)d.RefundQuantity,
                     DiscountPercentage = d.DiscountPercentage

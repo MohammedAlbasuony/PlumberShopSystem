@@ -22,6 +22,7 @@ namespace B_B.BLL.ViewModels
         // Relations
         public int? SupplierId { get; set; }
         public int? ClientId { get; set; }
+        public int? PlumberId { get; set; }
 
         [Required]
         [Range(0, double.MaxValue, ErrorMessage = "Paid amount must be >= 0")]
@@ -32,6 +33,7 @@ namespace B_B.BLL.ViewModels
 
         // Dropdowns
         public IEnumerable<SelectListItem>? Suppliers { get; set; }
+        public IEnumerable<SelectListItem>? Plumbers { get; set; }
         public IEnumerable<SelectListItem>? Clients { get; set; }
         public IEnumerable<SelectListItem>? Products { get; set; }
     }
