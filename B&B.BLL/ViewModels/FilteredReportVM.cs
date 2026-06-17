@@ -16,6 +16,7 @@ namespace B_B.BLL.ViewModels
 
         public decimal TotalAmount { get; set; }
         public decimal TotalRefund { get; set; }
+        public decimal? TotalAddons { get; set; }
         public decimal TotalPaid { get; set; }
         public decimal TotalRemaining { get; set; }
     }
@@ -27,6 +28,7 @@ namespace B_B.BLL.ViewModels
         public DateTime Date { get; set; }
         public decimal TotalAmount { get; set; }
         public decimal RefundAmount { get; set; }
+        public decimal? AddonsAmount { get; set; }
         public decimal PaidAmount { get; set; }
         public decimal Remaining { get; set; }
     }

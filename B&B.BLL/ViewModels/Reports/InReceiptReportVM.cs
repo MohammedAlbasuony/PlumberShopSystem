@@ -21,6 +21,7 @@ namespace B_B.BLL.ViewModels.Reports
         public decimal TotalPaid { get; set; }
         public decimal TotalRemaining => TotalAmount - TotalPaid;
         public decimal TotalRefund { get; set; } // ✅ NEW
+        public decimal? TotalAddons { get; set; } // ✅ NEW
 
         public string TopPartyName { get; set; }  // Supplier or Client
         public decimal TopPartyAmount { get; set; }
@@ -37,6 +38,7 @@ namespace B_B.BLL.ViewModels.Reports
         public decimal TotalAmount { get; set; }
         public decimal PaidAmount { get; set; }
         public decimal RefundAmount { get; set; } // ✅ NEW
+        public decimal? AddonsAmount { get; set; }
 
     }
     public class OutReceiptReportVM

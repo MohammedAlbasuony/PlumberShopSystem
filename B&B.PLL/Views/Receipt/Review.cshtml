@@ -66,6 +66,7 @@
                             <th>الخصم (%)</th>
                             <th>التكلفه الكليه</th>
                             <th>المبالغ المرتجعة</th>
+                            <th>المبالغ المضافه</th>
                             <th>الصافي بعد الخصم</th>
                         </tr>
                     </thead>
@@ -79,6 +80,7 @@
                                 <td>@s.DiscountPercentage.ToString("N2")%</td>
                                 <td>@s.TotalCost?.ToString("N2")</td>
                                 <td>@s.RefundAmount.ToString("N2")</td>
+                                <td>@s.TotalAddons?.ToString("N2")</td>
                                 <td>@netAfterDiscount.ToString("N2")</td>
                             </tr>
                         }

@@ -427,6 +427,7 @@ namespace B_B.PLL.Controllers
                 // ✅ after discount
                 TotalAmount = g.Sum(d => (d.UnitPrice * (d.Quantity - d.RefundQuantity + d.Addons)) * (1 - (d.DiscountPercentage / 100m))),
                 TotalCost = g.Sum(d => (d.Product.Cost * d.Quantity)),
+                TotalAddons = g.Sum(d => (d.Product.Cost * d.Addons)),
                 RefundAmount = g.Sum(d => (d.UnitPrice * d.RefundQuantity) * (1 - (d.DiscountPercentage / 100m)))
 
             })

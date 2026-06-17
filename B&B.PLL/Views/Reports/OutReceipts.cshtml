@@ -177,6 +177,7 @@
                             <th>التاريخ</th>
                             <th>الإجمالي</th>
                             <th>قيمة المرتجع</th>
+                            <th>قيمة الاضافات</th>
                             <th>المدفوع</th>
                             <th>المتبقي</th>
                         </tr>
@@ -192,6 +193,7 @@
                                 <td>@item.Date.ToShortDateString()</td>
                                 <td>@($"{item.TotalAmount:N2}")</td>
                                 <td>@($"{item.RefundAmount:N2}")</td>
+                                <td>@($"{item.AddonsAmount:N2}")</td>
                                 <td class="text-success">@($"{item.PaidAmount:N2}")</td>
                                 <td class="text-warning">@($"{(item.TotalAmount - item.PaidAmount):N2}")</td>
                             </tr>

@@ -36,6 +36,7 @@ namespace B_B.BLL.ViewModels
         public decimal DiscountPercentage { get; set; }
         public decimal TotalAmount { get; set; } // after discount
         public decimal? TotalCost { get; set; } // after discount
+        public decimal? TotalAddons { get; set; } // after discount
         public decimal? Addons { get; set; } 
         public decimal RefundAmount { get; set; } // after discount
         public decimal NetAmount => TotalAmount - RefundAmount;

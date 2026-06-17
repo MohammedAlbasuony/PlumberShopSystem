@@ -53,8 +53,10 @@ namespace B_B.PLL.Controllers
                     PartyName = r.PartyName,
                     Date = r.Date,
                     TotalAmount = r.TotalAmount,
+                    AddonsAmount = r.AddonsAmount,
                     PaidAmount = r.PaidAmount,
                     RefundAmount = r.RefundAmount,
+
                     Remaining = r.TotalAmount - r.PaidAmount
                 })
                 .ToList();
@@ -64,6 +66,7 @@ namespace B_B.PLL.Controllers
                 Receipts = list,
                 TotalAmount = list.Sum(x => x.TotalAmount),
                 TotalRefund = list.Sum(x => x.RefundAmount),
+                TotalAddons = list.Sum(x => x.AddonsAmount ?? 0),
                 TotalPaid = list.Sum(x => x.PaidAmount),
                 TotalRemaining = list.Sum(x => x.Remaining)
             };

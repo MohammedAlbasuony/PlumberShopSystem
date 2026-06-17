@@ -40,6 +40,9 @@ namespace B_B.BLL.Service.Implementation
                 TotalAmount = receipts.Sum(r => r.TotalAmount),
                 TotalCount = receipts.Count,
                 TotalPaid = receipts.Sum(r => r.PaidAmount),
+                TotalRefund = receipts.Sum(r => r.RefundAmount),
+                TotalAddons = receipts.Sum(r => r.AddonsAmount),
+
                 TopPartyName = grouped?.Supplier,
                 TopPartyAmount = grouped?.Total ?? 0,
                 Receipts = receipts
@@ -50,6 +53,8 @@ namespace B_B.BLL.Service.Implementation
                         PartyName = r.Supplier.Name,
                         Date = r.Date,
                         TotalAmount = r.TotalAmount,
+                        RefundAmount = r.RefundAmount,
+                        AddonsAmount = r.AddonsAmount,
                         PaidAmount = r.PaidAmount
                     })
                     .ToList()
@@ -76,6 +81,7 @@ namespace B_B.BLL.Service.Implementation
                 TotalAmount = receipts.Sum(r => r.TotalAmount),
                 TotalPaid = receipts.Sum(r => r.PaidAmount),
                 TotalRefund = receipts.Sum(r => r.RefundAmount),
+                TotalAddons = receipts.Sum(r => r.AddonsAmount),
                 TotalCount = receipts.Count,
                 TopPartyName = grouped?.Client,
                 TopPartyAmount = grouped?.Total ?? 0,
@@ -88,7 +94,8 @@ namespace B_B.BLL.Service.Implementation
                         Date = r.Date,
                         TotalAmount = r.TotalAmount,
                         PaidAmount = r.PaidAmount,
-                        RefundAmount = r.RefundAmount
+                        RefundAmount = r.RefundAmount,
+                        AddonsAmount = r.AddonsAmount
                     })
                     .ToList()
             };
